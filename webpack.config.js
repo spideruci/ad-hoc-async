@@ -1,65 +1,61 @@
-//@ts-check
+const path = require("path");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
-'use strict';
-
-const path = require('path');
-
-/** @typedef {import('webpack').Configuration} WebpackConfig */
-
-/** @type WebpackConfig */
-const extensionConfig = {
-  target: 'node', // VS Code extensions run in a Node.js-context
-  mode: 'none', // Keep source close to original
-  entry: './src/extension.ts', // Entry point for the extension
-  output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'extension.js',
-    libraryTarget: 'commonjs2',
+/** @type {import('webpack').Configuration} */
+module.exports = [
+  // 1️⃣ Webpack Config for the VS Code Extension
+  {
+    target: "node", // For Node.js environment (VS Code runs extensions in Node)
+    mode: "production",
+    entry: "./src/extension.ts",
+    output: {
+      path: path.resolve(__dirname, "dist"),
+      filename: "extension.js",
+      libraryTarget: "commonjs2",
+    },
+    resolve: {
+      extensions: [".ts", ".js"],
+    },
+    module: {
+      rules: [
+        {
+          test: /\.ts$/,
+          use: "ts-loader",
+          exclude: /node_modules/,
+        },
+      ],
+    },
+    externals: {
+      vscode: "commonjs vscode", // Exclude VS Code API from the bundle
+    },
   },
-  externals: {
-    vscode: 'commonjs vscode', // Exclude VS Code module
-  },
-  resolve: {
-    extensions: ['.ts', '.js'], // Resolve TypeScript and JavaScript files
-  },
-  module: {
-    rules: [
-      {
-        test: /\.ts$/,
-        exclude: /node_modules/,
-        use: 'ts-loader',
+
+  // 2️⃣ Webpack Config for the Webview (React + Monaco)
+  {
+    target: "web",
+    mode: "production",
+    entry: "./src/webview/index.tsx",
+    output: {
+      path: path.resolve(__dirname, "dist"),
+      filename: "editor.js",
+    },
+    resolve: {
+      extensions: [".tsx", ".ts", ".js"],
+      fallback: {
+        "fs": false,  // ❌ FS is a Node.js module and can't be used in a webview
+        "path": require.resolve("path-browserify"),  // ✅ Provides a browser-compatible path module
+        "os": require.resolve("os-browserify/browser"),  // ✅ Polyfill for os
+        "stream": require.resolve("stream-browserify"),  // ✅ Required by fast-glob
       },
-    ],
+    },
+    module: {
+      rules: [
+        {
+          test: /\.tsx?$/,
+          use: "ts-loader",
+          exclude: /node_modules/,
+        },
+      ],
+    },
   },
-  devtool: 'nosources-source-map',
-};
-
-/** @type WebpackConfig */
-const mediaConfig = {
-  target: 'web', // Media files run in the browser
-  mode: 'none', // Keep source close to original
-  entry: './src/media/main.ts', // Entry point for media files
-  output: {
-    path: path.resolve(__dirname, 'dist', 'media'),
-    filename: 'main.js',
-  },
-  resolve: {
-    extensions: ['.ts', '.js'], // Resolve TypeScript and JavaScript files
-  },
-  module: {
-    rules: [
-      {
-        test: /\.ts$/,
-        exclude: /node_modules/,
-        use: 'ts-loader',
-      },
-      {
-        test: /\.css$/, // Process CSS files
-        use: ['style-loader', 'css-loader'],
-      },
-    ],
-  },
-  devtool: 'nosources-source-map',
-};
-
-module.exports = [extensionConfig, mediaConfig];
+];

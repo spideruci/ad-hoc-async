@@ -11,33 +11,19 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "extension.startDebuggingSession",
-        "title": "Start Debugging Session"
-      }
-    ],
-    "languages": [
-      {
-        "id": "nbf",
-        "aliases": [
-          "NBF File",
-          "nbf"
-        ],
-        "extensions": [
-          ".nbf"
-        ]
-      }
-    ],
     "customEditors": [
       {
-        "viewType": "nbf.customEditor",
-        "displayName": "NBF Custom Editor",
+        "viewType": "co-debugger.customEditor",
+        "displayName": "Custom JS/TS Editor",
         "selector": [
           {
-            "filenamePattern": "*.nbf"
+            "filenamePattern": "*.js"
+          },
+          {
+            "filenamePattern": "*.ts"
           }
-        ]
+        ],
+        "priority": "default"
       }
     ]
   },
@@ -54,9 +40,14 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "**/*.ts": "tsc-files --noEmit"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.9",
     "@types/node": "20.x",
     "@types/vscode": "^1.95.0",
@@ -64,15 +55,26 @@
     "@typescript-eslint/parser": "^8.7.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
+    "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^7.1.2",
     "eslint": "^9.13.0",
+    "husky": "^9.1.7",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "stream-browserify": "^3.0.0",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.1",
     "typescript": "^5.6.3",
+    "util": "^0.12.5",
     "webpack": "^5.95.0",
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "monaco-editor": "^0.52.0"
+    "@monaco-editor/react": "^4.6.0",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "monaco-editor": "^0.52.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }
