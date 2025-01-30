@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Declare the VS Code Webview API globally
 interface VsCodeApi<State, Message> {
   postMessage: (message: Message) => void;
