@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { getNonce } from "./utils";
 import { parse } from "@typescript-eslint/typescript-estree";
+import { getNonce } from "./utils";
 
 export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(private readonly context: vscode.ExtensionContext) {}
@@ -18,19 +18,20 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     webviewPanel.webview.html = this.getHtml(webviewPanel.webview);
 
     // ✅ Wait for webview to signal that it's ready
-    const readyListener = webviewPanel.webview.onDidReceiveMessage(async (message) => {
-      if (message.command === "ready") {
-        console.log("Webview is ready. Sending content...");
-        webviewPanel.webview.postMessage({
-          command: "load",
-          text: document.getText(),
-          language: language,
-        });
+    const readyListener = webviewPanel.webview.onDidReceiveMessage(
+      async (message) => {
+        if (message.command === "ready") {
+          webviewPanel.webview.postMessage({
+            command: "load",
+            text: document.getText(),
+            language: language,
+          });
 
-        // Send AST immediately after loading
-        this.sendASTToWebview(document, webviewPanel);
+          // Send AST immediately after loading
+          this.sendASTToWebview(document, webviewPanel);
+        }
       }
-    });
+    );
 
     this.context.subscriptions.push(readyListener);
 
@@ -38,7 +39,11 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     webviewPanel.webview.onDidReceiveMessage(async (message) => {
       if (message.command === "save") {
         const edit = new vscode.WorkspaceEdit();
-        edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), message.text);
+        edit.replace(
+          document.uri,
+          new vscode.Range(0, 0, document.lineCount, 0),
+          message.text
+        );
         await vscode.workspace.applyEdit(edit);
         await document.save();
       }
@@ -49,7 +54,10 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     });
   }
 
-  private sendASTToWebview(document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel) {
+  private sendASTToWebview(
+    document: vscode.TextDocument,
+    webviewPanel: vscode.WebviewPanel
+  ): void {
     try {
       const code = document.getText();
       const ast = parse(code, { loc: true, range: true });
@@ -59,8 +67,17 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
         ast: ast,
       });
     } catch (error) {
-      console.error("AST Parsing Error:", error);
-      webviewPanel.webview.postMessage({ command: "error", message: (error as any).message });
+      if (error instanceof Error) {
+        webviewPanel.webview.postMessage({
+          command: "error",
+          message: error.message,
+        });
+      } else {
+        webviewPanel.webview.postMessage({
+          command: "error",
+          message: "Unknown error occurred",
+        });
+      }
     }
   }
 
