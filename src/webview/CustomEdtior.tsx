@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type * as monacoNamespace from "monaco-editor";
+import { VSCodeState, ToVSCodeMessage } from "./message";
 
-// VS Code Webview API
-declare function acquireVsCodeApi(): any;
-const vscode = acquireVsCodeApi();
+const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
 // Function to detect `console.log` calls
 const isConsoleLog = (node: any) =>
@@ -16,21 +15,20 @@ const isConsoleLog = (node: any) =>
   node.callee.property.name === "log";
 
 const CustomEditor: React.FC = () => {
-  const editorRef = useRef<monacoNamespace.editor.IStandaloneCodeEditor | null>(null);
+  const editorRef = useRef<monacoNamespace.editor.IStandaloneCodeEditor | undefined>(undefined);
   const monaco = useMonaco();
   const decorationsRef = useRef<string[]>([]);
-  const [language, setLanguage] = useState<string>("javascript");
+  const [language, setLanguage] = useState<string>(vscode.getState()?.language || "javascript");
 
   /** ✅ Handle messages from VS Code */
   const handleMessage = useCallback(
     (event: MessageEvent) => {
-      console.log("Received Message:", event.data);
       if (!editorRef.current) return;
 
       if (event.data.command === "load") {
-        console.log("Received Content:", event.data.text);
         editorRef.current.setValue(event.data.text);
         setLanguage(event.data.language);
+        vscode.setState({ language: event.data.language, ...vscode.getState() });
         vscode.postMessage({ command: "requestAST" });
       }
 
@@ -44,7 +42,6 @@ const CustomEditor: React.FC = () => {
   /** ✅ Set up Monaco and event listeners */
   useEffect(() => {
     if (!monaco) return;
-    console.log("Monaco is ready. Sending 'ready' to VS Code...");
     vscode.postMessage({ command: "ready" });
 
     window.addEventListener("message", handleMessage);
