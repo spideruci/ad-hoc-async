@@ -26,7 +26,7 @@ const CustomEditor: React.FC = () => {
 
   const handleMessage = useCallback(
     (event: MessageEvent<ToEditorMessage>) => {
-      if (!editorRef.current) return;
+      if (!editorRef.current) { return; }
 
       if (event.data.command === "load") {
         editorRef.current.setValue(event.data.text);
@@ -52,11 +52,11 @@ const CustomEditor: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!monaco) return;
+    if (!monaco) { return; };
     vscode.postMessage({ command: "ready" });
 
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    return (): void => window.removeEventListener("message", handleMessage);
   }, [monaco, handleMessage]);
 
   const handleEditorDidMount = useCallback(
@@ -73,7 +73,7 @@ const CustomEditor: React.FC = () => {
 
   const highlightLogs = useCallback(
     (ast?: NodeWithParent) => {
-      if (!editorRef.current || !monaco || !ast) return;
+      if (!editorRef.current || !monaco || !ast) { return; };
       const functionBlocksArray: { startLine: number; endLine: number }[] = [];
       const consoleLogNodes = findAllTargetChildNodes(ast, isConsoleLogNode);
 
@@ -103,7 +103,12 @@ const CustomEditor: React.FC = () => {
       />
       {editorRef.current &&
         functionBlocks.map((block, index) => (
-          <FunctionOverlay key={index} startLine={block.startLine} endLine={block.endLine} editor={editorRef.current!} />
+          <FunctionOverlay 
+            key={index} 
+            startLine={block.startLine}
+            endLine={block.endLine} 
+            editor={editorRef.current!} 
+          />
         ))}
     </div>
   );
