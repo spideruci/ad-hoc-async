@@ -1,86 +1,67 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type * as monacoNamespace from "monaco-editor";
-import { VSCodeState, ToVSCodeMessage } from "./message";
-import { TSESTree } from '@typescript-eslint/typescript-estree';
+import type { VSCodeState, ToVSCodeMessage } from "./message";
+import {
+  assignParents,
+  findAllTargetChildNodes,
+  findOneTargetParent,
+  isConsoleLogNode,
+  isFunctionNodes,
+  type NodeWithParent,
+} from "./ast-utils";
 
+// maybe use a factory to generate the message
+// { command: "requestAST" } message.createRequestAST();
+// not
 const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
-// Function to detect `console.log` calls
-const isConsoleLog = (node: any) =>
-  node.type === "CallExpression" &&
-  node.callee?.type === "MemberExpression" &&
-  node.callee.object?.type === "Identifier" &&
-  node.callee.object.name === "console" &&
-  node.callee.property?.type === "Identifier" &&
-  node.callee.property.name === "log";
-
 const CustomEditor: React.FC = () => {
-  const editorRef = useRef<monacoNamespace.editor.IStandaloneCodeEditor | undefined>(undefined);
+  const editorRef = useRef<
+    monacoNamespace.editor.IStandaloneCodeEditor | undefined
+  >(undefined);
   const monaco = useMonaco();
-  const [language, setLanguage] = useState<string>(vscode.getState()?.language || "javascript");
-  const floatingBoxesRef = useRef<{ startLine: number; endLine: number }[]>([]);
-  const [floatingDivs, setFloatingDivs] = useState<{ top: number; height: number }[]>([]);
-
+  const [language, setLanguage] = useState<string>(
+    vscode.getState()?.language || "javascript"
+  );
+  const overlayWidgetsRef = useRef<monacoNamespace.editor.IOverlayWidget[]>([]);
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {
-            
-      function assignParents(node: TSESTree.Node, parent: TSESTree.Node | null = null, visited: WeakSet<TSESTree.Node> = new WeakSet()): void {
-        if (!node || typeof node !== "object" || visited.has(node)) {
-            return; // Prevent infinite recursion
-        }
-        visited.add(node);
-    
-        (node as any).parent = parent; // Assign parent
-    
-        for (const key of Object.keys(node)) { // Use Object.keys to avoid prototype chain issues
-            const value = (node as any)[key];
-    
-            if (Array.isArray(value)) {
-                for (const child of value) {
-                    if (child && typeof child === "object" && "type" in child) {
-                        assignParents(child, node, visited);
-                    }
-                }
-            } else if (value && typeof value === "object" && "type" in value) {
-                assignParents(value, node, visited);
-            }
-        }
-    }
-      if (!editorRef.current) return;
+      if (!editorRef.current) { return; }
 
       if (event.data.command === "load") {
         editorRef.current.setValue(event.data.text);
         setLanguage(event.data.language);
-        vscode.setState({ language: event.data.language, ...vscode.getState() });
+        vscode.setState({
+          language: event.data.language,
+          ...vscode.getState(),
+        });
         vscode.postMessage({ command: "requestAST" });
       }
 
       if (event.data.command === "parsedAST") {
         const ast = event.data.ast;
-        assignParents(ast);
-        highlightLogs(ast)
+        const astWithParents = assignParents(ast);
+        highlightLogs(astWithParents);
       }
     },
     [monaco] // ✅ Ensure `monaco` is included as a dependency
   );
 
-  /** ✅ Set up Monaco and event listeners */
   useEffect(() => {
-    if (!monaco) return;
+    if (!monaco) { return; };
     vscode.postMessage({ command: "ready" });
 
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    return (): void => window.removeEventListener("message", handleMessage);
   }, [monaco, handleMessage]);
 
-  /** ✅ Handle Editor Mount */
+
   const handleEditorDidMount = useCallback(
     (editor: monacoNamespace.editor.IStandaloneCodeEditor) => {
       editorRef.current = editor;
 
-      // Listen for content changes
       editor.onDidChangeModelContent(() => {
         const newContent = editor.getValue();
         vscode.postMessage({ command: "save", text: newContent });
@@ -90,87 +71,72 @@ const CustomEditor: React.FC = () => {
     []
   );
 
-  /** ✅ Highlight `console.log` statements */
   const highlightLogs = useCallback(
-    (ast: TSESTree.Program) => {
-      if (!editorRef.current || !monaco || !ast) return;
+    (ast?: NodeWithParent) => {
+      if (!editorRef.current || !monaco || !ast) { return; }
       const functionBlocks: { startLine: number; endLine: number }[] = [];
+      const consoleLogNodes = findAllTargetChildNodes(ast, isConsoleLogNode);
+      consoleLogNodes.forEach(node => {
+        const enclosingFunctionNode = findOneTargetParent(node, isFunctionNodes);
+        if (enclosingFunctionNode) {
+          functionBlocks.push({
+            startLine: enclosingFunctionNode.loc.start.line,
+            endLine: enclosingFunctionNode.loc.end.line,
+          });
+        }
+      });
 
-      function findEnclosingFunction(node: TSESTree.Node): TSESTree.Node | null {
-        let current: TSESTree.Node | null = node;
-        const visited = new Set<TSESTree.Node>(); // Track visited nodes to detect cycles
-      
-        while (current) {
-          if (
-            current.type === "FunctionDeclaration" ||
-            current.type === "FunctionExpression" ||
-            current.type === "ArrowFunctionExpression"
-          ) {
-            return current;
-          }
-          
-          
-          // Detect circular references
-          if (visited.has(current)) {
-            return null; // Break the infinite loop
-          }
-          visited.add(current);
-      
-          current = (current as any).parent || null;
-      
-        }
-        
-        return null;
-      }
-      function traverse(node: TSESTree.Node, visited: WeakSet<TSESTree.Node> = new WeakSet()) {
-        if (!node || typeof node !== "object") {
-            return; // Skip non-object values
-        }
-    
-        if (visited.has(node)) {
-            console.warn("Detected circular reference, skipping:", node);
-            return; // Avoid infinite recursion
-        }
-        visited.add(node);
-    
-        if (isConsoleLog(node)) {
-            console.log(node);
-            console.log("console.log found")
-            const enclosingFunction = findEnclosingFunction(node);
-            if (enclosingFunction) {
-                functionBlocks.push({
-                    startLine: enclosingFunction.loc.start.line,
-                    endLine: enclosingFunction.loc.end.line,
-                });
-            }
-        }
-    
-        for (const key of Object.keys(node) as Array<keyof typeof node>) {
-            const value = node[key];
-            if (value && typeof value === "object" && "type" in value) {
-                traverse(value as TSESTree.Node, visited);
-            }
-        }
-      }
-      traverse(ast);
-
-      // Store floating div positions
-      floatingBoxesRef.current = functionBlocks;
-      updateFloatingDivPositions();
+      removeExistingWidgets();
+      functionBlocks.forEach(({ startLine, endLine }, index) => {
+        addOverlayWidget(startLine, endLine, `log-highlight-${index}`);
+      });
     },
-    [monaco] // ✅ Ensure `monaco` is included as a dependency
+    [monaco]
   );
-  const updateFloatingDivPositions = () => {
-    if (!editorRef.current || !monaco) return;
+
+  const addOverlayWidget = (startLine: number, endLine: number, widgetId: string): void => {
+    if (!editorRef.current || !monaco) { return; }
 
     const editor = editorRef.current;
-    const newFloatingDivs = floatingBoxesRef.current.map(({ startLine, endLine }) => {
-      const top = editor.getTopForLineNumber(startLine);
-      const bottom = editor.getTopForLineNumber(endLine);
-      return { top, height: bottom - top };
-    });
+    const top = editor.getTopForLineNumber(startLine);
+    const height = editor.getTopForLineNumber(endLine) - top;
 
-    setFloatingDivs(newFloatingDivs);
+    // Create a new overlay widget
+    const domNode = document.createElement("div");
+    domNode.id = widgetId;
+    domNode.style.position = "absolute";
+    domNode.style.border = "2px solid red";
+    domNode.style.background = "rgba(255, 0, 0, 0.1)";
+    domNode.style.pointerEvents = "none";
+    domNode.style.width = "100%";
+    domNode.style.height = `${height}px`;
+    domNode.style.top = `${top}px`;
+
+    const widget: monacoNamespace.editor.IOverlayWidget = {
+      getId: () => widgetId,
+      getDomNode: () => domNode,
+      getPosition: () => ({
+        preference: null,
+      }),
+    };
+
+    editor.addOverlayWidget(widget);
+    overlayWidgetsRef.current.push(widget);
+
+    // Update position when scrolling
+    editor.onDidScrollChange(() => {
+      domNode.style.top = `${editor.getTopForLineNumber(startLine) - editor.getScrollTop()}px`;
+    });
+  };
+
+  const removeExistingWidgets = (): void => {
+    if (!editorRef.current) { return; }
+
+    const editor = editorRef.current;
+    overlayWidgetsRef.current.forEach((widget) => {
+      editor.removeOverlayWidget(widget);
+    });
+    overlayWidgetsRef.current = [];
   };
 
   return (
@@ -182,20 +148,6 @@ const CustomEditor: React.FC = () => {
         onMount={handleEditorDidMount}
         options={{ automaticLayout: true }}
       />
-      {floatingDivs.map((box, index) => (
-        <div
-          key={index}
-          style={{
-            position: "absolute",
-            top: box.top,
-            left: "5px",
-            width: "calc(100% - 10px)",
-            height: box.height,
-            border: "2px solid red",
-            pointerEvents: "none",
-          }}
-        ></div>
-      ))}
     </div>
   );
 };

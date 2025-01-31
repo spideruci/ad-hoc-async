@@ -4,7 +4,7 @@ import importPlugin from "eslint-plugin-import";
 
 export default [
     {
-        files: ["**/*.ts"],
+        files: ["**/*.ts", "**/*.tsx"],
         // ✅ Exclude specific files or directories
         ignores: [
             "node_modules/",
