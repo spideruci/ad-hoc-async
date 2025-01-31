@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { parse, TSESTree } from "@typescript-eslint/typescript-estree";
+import { parse } from "@typescript-eslint/typescript-estree";
 import { getNonce } from "./utils";
 
 export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider {
