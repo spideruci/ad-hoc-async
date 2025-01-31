@@ -74,20 +74,20 @@ const CustomEditor: React.FC = () => {
   const highlightLogs = useCallback(
     (ast?: NodeWithParent) => {
       if (!editorRef.current || !monaco || !ast) { return; };
-      const functionBlocksArray: { startLine: number; endLine: number }[] = [];
+      const functionBlocks: { startLine: number; endLine: number }[] = [];
       const consoleLogNodes = findAllTargetChildNodes(ast, isConsoleLogNode);
 
       consoleLogNodes.forEach((node) => {
         const enclosingFunctionNode = findOneTargetParent(node, isFunctionNodes);
         if (enclosingFunctionNode) {
-          functionBlocksArray.push({
+          functionBlocks.push({
             startLine: enclosingFunctionNode.loc.start.line,
             endLine: enclosingFunctionNode.loc.end.line,
           });
         }
       });
 
-      setFunctionBlocks(functionBlocksArray);
+      setFunctionBlocks(functionBlocks);
     },
     [monaco]
   );
