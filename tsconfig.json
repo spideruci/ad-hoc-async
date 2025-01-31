@@ -1,15 +1,22 @@
 {
-	"compilerOptions": {
-	  "jsx": "react-jsx",
-	  "outDir": "./dist",
-	  "module": "commonjs",
-	  "target": "es6",
-	  "lib": ["es6", "dom"],
-	  "strict": true,
-	  "sourceMap": true,
-	  "esModuleInterop": true,
-	  "forceConsistentCasingInFileNames": true,
-	  "skipLibCheck": true,
-	  "types": ["vscode", "jest", "monaco-editor"]  // ✅ Add "monaco-editor"
-	}
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "module": "commonjs",
+    "target": "es6",
+    "lib": [
+      "es6",
+      "dom"
+    ],
+    "strict": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "types": [
+      "vscode",
+      "jest",
+      "monaco-editor"
+    ] // ✅ Add "monaco-editor"
+  }
 }

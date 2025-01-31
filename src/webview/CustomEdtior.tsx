@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type * as monacoNamespace from "monaco-editor";
 import { VSCodeState, ToVSCodeMessage } from "./message";
+import { TSESTree } from '@typescript-eslint/typescript-estree';
 
 const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
@@ -17,12 +18,36 @@ const isConsoleLog = (node: any) =>
 const CustomEditor: React.FC = () => {
   const editorRef = useRef<monacoNamespace.editor.IStandaloneCodeEditor | undefined>(undefined);
   const monaco = useMonaco();
-  const decorationsRef = useRef<string[]>([]);
   const [language, setLanguage] = useState<string>(vscode.getState()?.language || "javascript");
+  const floatingBoxesRef = useRef<{ startLine: number; endLine: number }[]>([]);
+  const [floatingDivs, setFloatingDivs] = useState<{ top: number; height: number }[]>([]);
 
-  /** ✅ Handle messages from VS Code */
+
   const handleMessage = useCallback(
     (event: MessageEvent) => {
+            
+      function assignParents(node: TSESTree.Node, parent: TSESTree.Node | null = null, visited: WeakSet<TSESTree.Node> = new WeakSet()): void {
+        if (!node || typeof node !== "object" || visited.has(node)) {
+            return; // Prevent infinite recursion
+        }
+        visited.add(node);
+    
+        (node as any).parent = parent; // Assign parent
+    
+        for (const key of Object.keys(node)) { // Use Object.keys to avoid prototype chain issues
+            const value = (node as any)[key];
+    
+            if (Array.isArray(value)) {
+                for (const child of value) {
+                    if (child && typeof child === "object" && "type" in child) {
+                        assignParents(child, node, visited);
+                    }
+                }
+            } else if (value && typeof value === "object" && "type" in value) {
+                assignParents(value, node, visited);
+            }
+        }
+    }
       if (!editorRef.current) return;
 
       if (event.data.command === "load") {
@@ -33,7 +58,9 @@ const CustomEditor: React.FC = () => {
       }
 
       if (event.data.command === "parsedAST") {
-        highlightLogs(event.data.ast);
+        const ast = event.data.ast;
+        assignParents(ast);
+        highlightLogs(ast)
       }
     },
     [monaco] // ✅ Ensure `monaco` is included as a dependency
@@ -65,42 +92,86 @@ const CustomEditor: React.FC = () => {
 
   /** ✅ Highlight `console.log` statements */
   const highlightLogs = useCallback(
-    (ast: any) => {
+    (ast: TSESTree.Program) => {
       if (!editorRef.current || !monaco || !ast) return;
+      const functionBlocks: { startLine: number; endLine: number }[] = [];
 
-      const logLocations: { line: number; column: number }[] = [];
-
-      function traverse(node: any) {
-        if (isConsoleLog(node)) {
-          logLocations.push({
-            line: node.loc.start.line,
-            column: node.loc.start.column,
-          });
-        }
-
-        for (const key in node) {
-          if (node[key] && typeof node[key] === "object") {
-            traverse(node[key]);
+      function findEnclosingFunction(node: TSESTree.Node): TSESTree.Node | null {
+        let current: TSESTree.Node | null = node;
+        const visited = new Set<TSESTree.Node>(); // Track visited nodes to detect cycles
+      
+        while (current) {
+          if (
+            current.type === "FunctionDeclaration" ||
+            current.type === "FunctionExpression" ||
+            current.type === "ArrowFunctionExpression"
+          ) {
+            return current;
           }
+          
+          
+          // Detect circular references
+          if (visited.has(current)) {
+            return null; // Break the infinite loop
+          }
+          visited.add(current);
+      
+          current = (current as any).parent || null;
+      
+        }
+        
+        return null;
+      }
+      function traverse(node: TSESTree.Node, visited: WeakSet<TSESTree.Node> = new WeakSet()) {
+        if (!node || typeof node !== "object") {
+            return; // Skip non-object values
+        }
+    
+        if (visited.has(node)) {
+            console.warn("Detected circular reference, skipping:", node);
+            return; // Avoid infinite recursion
+        }
+        visited.add(node);
+    
+        if (isConsoleLog(node)) {
+            console.log(node);
+            console.log("console.log found")
+            const enclosingFunction = findEnclosingFunction(node);
+            if (enclosingFunction) {
+                functionBlocks.push({
+                    startLine: enclosingFunction.loc.start.line,
+                    endLine: enclosingFunction.loc.end.line,
+                });
+            }
+        }
+    
+        for (const key of Object.keys(node) as Array<keyof typeof node>) {
+            const value = node[key];
+            if (value && typeof value === "object" && "type" in value) {
+                traverse(value as TSESTree.Node, visited);
+            }
         }
       }
-
       traverse(ast);
 
-      // ✅ Generate Monaco decorations
-      const newDecorations = logLocations.map((log) => ({
-        range: new monaco.Range(log.line, 1, log.line, 1),
-        options: {
-          isWholeLine: true,
-          inlineClassName: "monaco-log-highlight",
-        },
-      }));
-
-      // ✅ Apply decorations efficiently
-      decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, newDecorations);
+      // Store floating div positions
+      floatingBoxesRef.current = functionBlocks;
+      updateFloatingDivPositions();
     },
     [monaco] // ✅ Ensure `monaco` is included as a dependency
   );
+  const updateFloatingDivPositions = () => {
+    if (!editorRef.current || !monaco) return;
+
+    const editor = editorRef.current;
+    const newFloatingDivs = floatingBoxesRef.current.map(({ startLine, endLine }) => {
+      const top = editor.getTopForLineNumber(startLine);
+      const bottom = editor.getTopForLineNumber(endLine);
+      return { top, height: bottom - top };
+    });
+
+    setFloatingDivs(newFloatingDivs);
+  };
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
@@ -111,9 +182,20 @@ const CustomEditor: React.FC = () => {
         onMount={handleEditorDidMount}
         options={{ automaticLayout: true }}
       />
-      <style>
-        {`.monaco-log-highlight { background-color: rgba(255, 200, 0, 0.3); }`}
-      </style>
+      {floatingDivs.map((box, index) => (
+        <div
+          key={index}
+          style={{
+            position: "absolute",
+            top: box.top,
+            left: "5px",
+            width: "calc(100% - 10px)",
+            height: box.height,
+            border: "2px solid red",
+            pointerEvents: "none",
+          }}
+        ></div>
+      ))}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { parse } from "@typescript-eslint/typescript-estree";
+import { parse, TSESTree } from "@typescript-eslint/typescript-estree";
 import { getNonce } from "./utils";
 
 export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider {
@@ -16,6 +16,7 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     const language = fileName.endsWith(".ts") ? "typescript" : "javascript";
 
     webviewPanel.webview.html = this.getHtml(webviewPanel.webview);
+
 
     // ✅ Wait for webview to signal that it's ready
     const readyListener = webviewPanel.webview.onDidReceiveMessage(
@@ -54,6 +55,7 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     });
   }
 
+
   private sendASTToWebview(
     document: vscode.TextDocument,
     webviewPanel: vscode.WebviewPanel
@@ -61,7 +63,6 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     try {
       const code = document.getText();
       const ast = parse(code, { loc: true, range: true });
-
       webviewPanel.webview.postMessage({
         command: "parsedAST",
         ast: ast,
