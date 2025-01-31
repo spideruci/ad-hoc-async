@@ -1,106 +1,145 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type * as monacoNamespace from "monaco-editor";
-import { VSCodeState, ToVSCodeMessage } from "./message";
+import type { VSCodeState, ToVSCodeMessage, ToEditorMessage } from "./message";
+import {
+  assignParents,
+  findAllTargetChildNodes,
+  findOneTargetParent,
+  isConsoleLogNode,
+  isFunctionNodes,
+  type NodeWithParent,
+} from "./ast-utils";
 
+// maybe use a factory to generate the message
+// { command: "requestAST" } message.createRequestAST();
+// not
 const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
-// Function to detect `console.log` calls
-const isConsoleLog = (node: any) =>
-  node.type === "CallExpression" &&
-  node.callee?.type === "MemberExpression" &&
-  node.callee.object?.type === "Identifier" &&
-  node.callee.object.name === "console" &&
-  node.callee.property?.type === "Identifier" &&
-  node.callee.property.name === "log";
-
 const CustomEditor: React.FC = () => {
-  const editorRef = useRef<monacoNamespace.editor.IStandaloneCodeEditor | undefined>(undefined);
+  const editorRef = useRef<
+    monacoNamespace.editor.IStandaloneCodeEditor | undefined
+  >(undefined);
   const monaco = useMonaco();
-  const decorationsRef = useRef<string[]>([]);
-  const [language, setLanguage] = useState<string>(vscode.getState()?.language || "javascript");
+  const [language, setLanguage] = useState<string>(
+    vscode.getState()?.language || "javascript"
+  );
+  const overlayWidgetsRef = useRef<monacoNamespace.editor.IOverlayWidget[]>([]);
 
-  /** ✅ Handle messages from VS Code */
   const handleMessage = useCallback(
-    (event: MessageEvent) => {
-      if (!editorRef.current) return;
+    (event: MessageEvent<ToEditorMessage>) => {
+      if (!editorRef.current) { return; }
 
       if (event.data.command === "load") {
         editorRef.current.setValue(event.data.text);
         setLanguage(event.data.language);
-        vscode.setState({ language: event.data.language, ...vscode.getState() });
+        vscode.setState({
+          language: event.data.language,
+          ...vscode.getState(),
+        });
         vscode.postMessage({ command: "requestAST" });
       }
 
       if (event.data.command === "parsedAST") {
-        highlightLogs(event.data.ast);
+        const ast = event.data.ast;
+        const astWithParents = assignParents(ast);
+        highlightLogs(astWithParents);
+      }
+
+      if (event.data.command === "error") {
+        removeExistingWidgets();
       }
     },
     [monaco] // ✅ Ensure `monaco` is included as a dependency
   );
 
-  /** ✅ Set up Monaco and event listeners */
   useEffect(() => {
-    if (!monaco) return;
+    if (!monaco) { return; };
     vscode.postMessage({ command: "ready" });
 
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    return (): void => window.removeEventListener("message", handleMessage);
   }, [monaco, handleMessage]);
 
-  /** ✅ Handle Editor Mount */
+
   const handleEditorDidMount = useCallback(
     (editor: monacoNamespace.editor.IStandaloneCodeEditor) => {
       editorRef.current = editor;
 
-      // Listen for content changes
       editor.onDidChangeModelContent(() => {
         const newContent = editor.getValue();
         vscode.postMessage({ command: "save", text: newContent });
-        vscode.postMessage({ command: "requestAST" });
       });
     },
     []
   );
 
-  /** ✅ Highlight `console.log` statements */
   const highlightLogs = useCallback(
-    (ast: any) => {
-      if (!editorRef.current || !monaco || !ast) return;
-
-      const logLocations: { line: number; column: number }[] = [];
-
-      function traverse(node: any) {
-        if (isConsoleLog(node)) {
-          logLocations.push({
-            line: node.loc.start.line,
-            column: node.loc.start.column,
+    (ast?: NodeWithParent) => {
+      if (!editorRef.current || !monaco || !ast) { return; }
+      const functionBlocks: { startLine: number; endLine: number }[] = [];
+      const consoleLogNodes = findAllTargetChildNodes(ast, isConsoleLogNode);
+      consoleLogNodes.forEach(node => {
+        const enclosingFunctionNode = findOneTargetParent(node, isFunctionNodes);
+        if (enclosingFunctionNode) {
+          functionBlocks.push({
+            startLine: enclosingFunctionNode.loc.start.line,
+            endLine: enclosingFunctionNode.loc.end.line,
           });
         }
+      });
 
-        for (const key in node) {
-          if (node[key] && typeof node[key] === "object") {
-            traverse(node[key]);
-          }
-        }
-      }
-
-      traverse(ast);
-
-      // ✅ Generate Monaco decorations
-      const newDecorations = logLocations.map((log) => ({
-        range: new monaco.Range(log.line, 1, log.line, 1),
-        options: {
-          isWholeLine: true,
-          inlineClassName: "monaco-log-highlight",
-        },
-      }));
-
-      // ✅ Apply decorations efficiently
-      decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, newDecorations);
+      removeExistingWidgets();
+      functionBlocks.forEach(({ startLine, endLine }, index) => {
+        addOverlayWidget(startLine, endLine, `log-highlight-${index}`);
+      });
     },
-    [monaco] // ✅ Ensure `monaco` is included as a dependency
+    [monaco]
   );
+
+  const addOverlayWidget = (startLine: number, endLine: number, widgetId: string): void => {
+    if (!editorRef.current || !monaco) { return; }
+    const editor = editorRef.current;
+    const top = editor.getTopForLineNumber(startLine);
+    const height = editor.getBottomForLineNumber(endLine) - top;
+
+    // Create a new overlay widget
+    const domNode = document.createElement("div");
+    domNode.id = widgetId;
+    domNode.style.position = "absolute";
+    domNode.style.border = "2px solid red";
+    domNode.style.background = "rgba(255, 0, 0, 0.1)";
+    domNode.style.pointerEvents = "none";
+    domNode.style.width = "100%";
+    domNode.style.height = `${height}px`;
+    domNode.style.top = `${editor.getTopForLineNumber(startLine) - editor.getScrollTop()}px`;
+
+    const widget: monacoNamespace.editor.IOverlayWidget = {
+      getId: () => widgetId,
+      getDomNode: () => domNode,
+      getPosition: () => ({
+        preference: null,
+      }),
+    };
+
+    editor.addOverlayWidget(widget);
+    overlayWidgetsRef.current.push(widget);
+
+    // Update position when scrolling
+    editor.onDidScrollChange(() => {
+      domNode.style.top = `${editor.getTopForLineNumber(startLine) - editor.getScrollTop()}px`;
+    });
+  };
+
+  const removeExistingWidgets = (): void => {
+    if (!editorRef.current) { return; }
+
+    const editor = editorRef.current;
+    overlayWidgetsRef.current.forEach((widget) => {
+      editor.removeOverlayWidget(widget);
+    });
+    overlayWidgetsRef.current = [];
+  };
 
   return (
     <div style={{ height: "100vh", width: "100%" }}>
@@ -111,9 +150,6 @@ const CustomEditor: React.FC = () => {
         onMount={handleEditorDidMount}
         options={{ automaticLayout: true }}
       />
-      <style>
-        {`.monaco-log-highlight { background-color: rgba(255, 200, 0, 0.3); }`}
-      </style>
     </div>
   );
 };

@@ -17,6 +17,7 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
 
     webviewPanel.webview.html = this.getHtml(webviewPanel.webview);
 
+
     // ✅ Wait for webview to signal that it's ready
     const readyListener = webviewPanel.webview.onDidReceiveMessage(
       async (message) => {
@@ -46,6 +47,7 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
         );
         await vscode.workspace.applyEdit(edit);
         await document.save();
+        this.sendASTToWebview(document, webviewPanel);
       }
 
       if (message.command === "requestAST") {
@@ -54,6 +56,7 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     });
   }
 
+
   private sendASTToWebview(
     document: vscode.TextDocument,
     webviewPanel: vscode.WebviewPanel
@@ -61,7 +64,6 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     try {
       const code = document.getText();
       const ast = parse(code, { loc: true, range: true });
-
       webviewPanel.webview.postMessage({
         command: "parsedAST",
         ast: ast,
