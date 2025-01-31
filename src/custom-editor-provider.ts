@@ -47,6 +47,7 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
         );
         await vscode.workspace.applyEdit(edit);
         await document.save();
+        this.sendASTToWebview(document, webviewPanel);
       }
 
       if (message.command === "requestAST") {

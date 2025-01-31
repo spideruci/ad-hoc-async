@@ -42,10 +42,10 @@ module.exports = [
         resolve: {
             extensions: [".tsx", ".ts", ".js"],
             fallback: {
-                "fs": false,  // ❌ FS is a Node.js module and can't be used in a webview
-                "path": require.resolve("path-browserify"),  // ✅ Provides a browser-compatible path module
-                "os": require.resolve("os-browserify/browser"),  // ✅ Polyfill for os
-                "stream": require.resolve("stream-browserify"),  // ✅ Required by fast-glob
+                "fs": false,
+                "path": require.resolve("path-browserify"),
+                "os": require.resolve("os-browserify/browser"),
+                "stream": require.resolve("stream-browserify"),
             },
         },
         module: {
@@ -54,6 +54,10 @@ module.exports = [
                     test: /\.tsx?$/,
                     use: "ts-loader",
                     exclude: /node_modules/,
+                },
+                {
+                    test: /\.css$/i,
+                    use: ["style-loader", "css-loader"],
                 },
             ],
         },

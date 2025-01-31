@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type * as monacoNamespace from "monaco-editor";
-import type { VSCodeState, ToVSCodeMessage } from "./message";
+import type { VSCodeState, ToVSCodeMessage, ToEditorMessage } from "./message";
 import {
   assignParents,
   findAllTargetChildNodes,
@@ -27,7 +27,7 @@ const CustomEditor: React.FC = () => {
   const overlayWidgetsRef = useRef<monacoNamespace.editor.IOverlayWidget[]>([]);
 
   const handleMessage = useCallback(
-    (event: MessageEvent) => {
+    (event: MessageEvent<ToEditorMessage>) => {
       if (!editorRef.current) { return; }
 
       if (event.data.command === "load") {
@@ -44,6 +44,10 @@ const CustomEditor: React.FC = () => {
         const ast = event.data.ast;
         const astWithParents = assignParents(ast);
         highlightLogs(astWithParents);
+      }
+
+      if (event.data.command === "error") {
+        removeExistingWidgets();
       }
     },
     [monaco] // ✅ Ensure `monaco` is included as a dependency
@@ -65,7 +69,6 @@ const CustomEditor: React.FC = () => {
       editor.onDidChangeModelContent(() => {
         const newContent = editor.getValue();
         vscode.postMessage({ command: "save", text: newContent });
-        vscode.postMessage({ command: "requestAST" });
       });
     },
     []
@@ -96,10 +99,9 @@ const CustomEditor: React.FC = () => {
 
   const addOverlayWidget = (startLine: number, endLine: number, widgetId: string): void => {
     if (!editorRef.current || !monaco) { return; }
-
     const editor = editorRef.current;
     const top = editor.getTopForLineNumber(startLine);
-    const height = editor.getTopForLineNumber(endLine) - top;
+    const height = editor.getBottomForLineNumber(endLine) - top;
 
     // Create a new overlay widget
     const domNode = document.createElement("div");
@@ -110,7 +112,7 @@ const CustomEditor: React.FC = () => {
     domNode.style.pointerEvents = "none";
     domNode.style.width = "100%";
     domNode.style.height = `${height}px`;
-    domNode.style.top = `${top}px`;
+    domNode.style.top = `${editor.getTopForLineNumber(startLine) - editor.getScrollTop()}px`;
 
     const widget: monacoNamespace.editor.IOverlayWidget = {
       getId: () => widgetId,
