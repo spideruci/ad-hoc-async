@@ -25,10 +25,28 @@
         ],
         "priority": "default"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "co-debugger-sidebar",
+          "title": "Co Debugger",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "co-debugger-sidebar": [
+        {
+          "type": "webview",
+          "id": "co-debugger.sidebarView",
+          "name": "Sidebar View"
+        }
+      ]
+    }
   },
   "activationEvents": [
-    "onCommand:extension.startDebuggingSession",
+    "onView:co-debugger.sidebarView",
     "*"
   ],
   "scripts": {
@@ -61,6 +79,7 @@
     "path-browserify": "^1.0.1",
     "stream-browserify": "^3.0.0",
     "style-loader": "^4.0.0",
+    "terser-webpack-plugin": "^5.3.11",
     "ts-loader": "^9.5.1",
     "typescript": "^5.6.3",
     "util": "^0.12.5",
@@ -71,6 +90,7 @@
     "@monaco-editor/react": "^4.6.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/typescript-estree": "^8.23.0",
     "monaco-editor": "^0.52.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

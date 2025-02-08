@@ -1,5 +1,6 @@
 const path = require("path");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
 
 /** @type {import('webpack').Configuration} */
 module.exports = [
@@ -7,7 +8,7 @@ module.exports = [
     {
         target: "node", // For Node.js environment (VS Code runs extensions in Node)
         mode: "production",
-        entry: "./src/extension.ts",
+        entry: "./src/extension/extension.ts",
         output: {
             path: path.resolve(__dirname, "dist"),
             filename: "extension.js",
@@ -25,16 +26,22 @@ module.exports = [
                 },
             ],
         },
-        externals: {
-            vscode: "commonjs vscode", // Exclude VS Code API from the bundle
+        optimization: {
+            minimize: true,
+            minimizer: [new TerserPlugin({ parallel: true })], // ✅ Parallel minification
         },
+        cache: {
+            type: "filesystem", // ✅ Persistent cache
+        },
+        externals: {
+            vscode: "commonjs vscode", 
+        }
+        
     },
-
-    // 2️⃣ Webpack Config for the Webview (React + Monaco)
     {
         target: "web",
         mode: "production",
-        entry: "./src/webview/index.tsx",
+        entry: "./src/editor-webview/index.tsx",
         output: {
             path: path.resolve(__dirname, "dist"),
             filename: "editor.js",
@@ -60,6 +67,51 @@ module.exports = [
                     use: ["style-loader", "css-loader"],
                 },
             ],
+        },
+        optimization: {
+            minimize: true,
+            minimizer: [new TerserPlugin({ parallel: true })], // ✅ Parallel minification
+        },
+        cache: {
+            type: "filesystem", // ✅ Persistent cache
+        },
+    },
+    {
+        target: "web",
+        mode: "production",
+        entry: "./src/terminal-webview/index.tsx",
+        output: {
+            path: path.resolve(__dirname, "dist"),
+            filename: "sidebar.js",
+        },
+        resolve: {
+            extensions: [".tsx", ".ts", ".js"],
+            fallback: {
+                "fs": false,
+                "path": require.resolve("path-browserify"),
+                "os": require.resolve("os-browserify/browser"),
+                "stream": require.resolve("stream-browserify"),
+            },
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.tsx?$/,
+                    use: "ts-loader",
+                    exclude: /node_modules/,
+                },
+                {
+                    test: /\.css$/i,
+                    use: ["style-loader", "css-loader"],
+                },
+            ],
+        },
+        optimization: {
+            minimize: true,
+            minimizer: [new TerserPlugin({ parallel: true })], // ✅ Parallel minification
+        },
+        cache: {
+            type: "filesystem", // ✅ Persistent cache
         },
     },
 ];
