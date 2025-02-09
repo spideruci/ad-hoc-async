@@ -27,7 +27,6 @@ const CustomEditor: React.FC = () => {
   const handleMessage = useCallback(
     (event: MessageEvent<ToEditorMessage>) => {
       if (!editorRef.current) { return; }
-
       if (event.data.command === "load") {
         editorRef.current.setValue(event.data.text);
         setLanguage(event.data.language);
@@ -40,6 +39,8 @@ const CustomEditor: React.FC = () => {
 
       if (event.data.command === "parsedAST") {
         const ast = event.data.ast;
+        const language = event.data.language;
+        setLanguage(language);
         const astWithParents = assignParents(ast);
         highlightLogs(astWithParents);
       }

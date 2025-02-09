@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { getNonce } from "./utils";
+import { getNonce } from "./utils/utils";
 
 export class TerminalWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "co-debugger.sidebarView";
@@ -10,7 +10,7 @@ export class TerminalWebviewProvider implements vscode.WebviewViewProvider {
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken
-  ) {
+  ): void {
     webviewView.webview.options = {
       enableScripts: true,
     };

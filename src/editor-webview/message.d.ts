@@ -12,6 +12,7 @@ export type ToVSCodeMessage = {
 export type ToEditorMessage = {
     command: "parsedAST";
     ast: TSESTree.Node;
+    language: "javascript" | "typescript";
 } | {
     command: "error";
     message: string

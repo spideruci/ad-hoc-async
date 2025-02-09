@@ -7,7 +7,7 @@ interface FunctionOverlayProps {
   editor: monacoNamespace.editor.IStandaloneCodeEditor;
 }
 
-const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, editor }) => {
+const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, editor }): React.ReactElement => {
   const [scrollTop, setScrollTop] = useState<number>(editor.getScrollTop());
 
   useEffect(() => {
@@ -17,7 +17,7 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, e
 
     const disposable = editor.onDidScrollChange(handleScroll); // Listen for scroll changes
 
-    return () => disposable.dispose(); // Cleanup on unmount
+    return (): void => disposable.dispose(); // Cleanup on unmount
   }, [editor]);
 
   const top = editor.getTopForLineNumber(startLine) - scrollTop; // Adjust position
