@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import { parse } from "@typescript-eslint/typescript-estree";
 import { getNonce } from "./utils/utils";
-import { tsConsoleOverride, jsConsoleOverride } from "./utils/exteneded_log";
 
 export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
 {
@@ -34,14 +33,11 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
         }
         if (message.command === "save") {
           const edit = new vscode.WorkspaceEdit();
-          const altCode = this.transformCodeWithCustomizedLog(
-            message.text,
-            language
-          ); // Apply the transformation
+
           edit.replace(
             document.uri,
             new vscode.Range(0, 0, document.lineCount, 0),
-            altCode
+            message.text
           );
           await vscode.workspace.applyEdit(edit);
           await document.save();
@@ -61,21 +57,6 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
       text: document.getText(),
       language: language,
     });
-  }
-
-  private transformCodeWithCustomizedLog(
-    code: string,
-    fileType: "javascript" | "typescript"
-  ): string {
-    const overrideMarker: string = "console.log = function(...args) {";
-
-    if (code.includes(overrideMarker)) {
-      return code;
-    }
-
-    const consoleOverride =
-      fileType === "typescript" ? tsConsoleOverride : jsConsoleOverride;
-    return consoleOverride + code;
   }
 
   private sendASTToWebview(
