@@ -1,8 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import CustomEditor from "./CustomEdtior";
+import "./styles.css";
 
-// Wait for the DOM to fully load
 window.addEventListener("DOMContentLoaded", () => {
   const rootElement = document.getElementById("root");
 

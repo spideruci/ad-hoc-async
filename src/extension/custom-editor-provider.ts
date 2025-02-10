@@ -2,22 +2,26 @@ import * as vscode from "vscode";
 import { parse } from "@typescript-eslint/typescript-estree";
 import { getNonce } from "./utils/utils";
 
-export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
-{
+export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider {
+  private webviewPanel: vscode.WebviewPanel | null = null;
   constructor(private readonly context: vscode.ExtensionContext) {}
+
+  public handleLogBroadcast(log: any): void {
+    if (this.webviewPanel) {
+      this.webviewPanel.webview.postMessage({ command: "log", log });
+    }
+  }
 
   async resolveCustomTextEditor(
     document: vscode.TextDocument,
     webviewPanel: vscode.WebviewPanel,
     _token: vscode.CancellationToken
   ): Promise<void> {
+    this.webviewPanel = webviewPanel;
     webviewPanel.webview.options = { enableScripts: true };
 
     const fileName = document.uri.path;
-    const language =
-      fileName.endsWith(".ts") || fileName.endsWith(".tsx")
-        ? "typescript"
-        : "javascript";
+    const language = (fileName.endsWith(".ts") || fileName.endsWith(".tsx")) ? "typescript" : "javascript";
     // ✅ Wait for webview to signal that it's ready
     const readyListener = webviewPanel.webview.onDidReceiveMessage(
       async (message) => {
@@ -87,21 +91,21 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
       // JavaScript override pattern (removes `var originalConsoleLog`)
       const jsOverridePattern =
         /\(function\(\)\s*\{\s*var\s+originalConsoleLog\s*=\s*console\.log;[\s\S]*?\}\)\(\);\s*\n?/;
-  
+
       return code.replace(jsOverridePattern, "");
     } else if (fileType === "typescript") {
       // TypeScript override pattern (removes `let originalConsoleLog: typeof console.log`)
       const tsOverridePattern =
         // eslint-disable-next-line max-len
         /\(function\(\)\s*\{\s*let\s+originalConsoleLog\s*:\s*typeof\s*console\.log\s*=\s*console\.log;[\s\S]*?\}\)\(\);\s*\n?/;
-  
+
       return code.replace(tsOverridePattern, "");
     }
-  
+
     // If the file type is unknown, return the code unchanged
     return code;
   }
-  
+
 
   private getHtml(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(
