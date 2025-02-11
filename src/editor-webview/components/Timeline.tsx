@@ -26,8 +26,6 @@ export default function Timeline({ logs, startLine, endLine }: TimelineProps) {
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        console.log(containerRef.current.clientWidth)
-        console.log(containerRef.current.clientHeight)
         setDimensions({
           width: containerRef.current.clientWidth,
           height: containerRef.current.clientHeight,
