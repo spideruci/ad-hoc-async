@@ -1,16 +1,25 @@
 import * as vscode from "vscode";
-import { getNonce } from "./utils";
+import { getNonce } from "./utils/utils";
+import type { Log } from "../types/message";
 
 export class TerminalWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "co-debugger.sidebarView";
+  private webviewView: vscode.WebviewView | null = null;
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
+  public handleLogBroadcast(log: Log): void {
+    if (this.webviewView) {
+      this.webviewView.webview.postMessage({ command: "log", log });
+    }
+  }
+  
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken
-  ) {
+  ): void {
+    this.webviewView = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
     };

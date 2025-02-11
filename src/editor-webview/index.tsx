@@ -1,8 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import CustomEditor from "./CustomEdtior";
+import "./styles.css";
+// import "@xyflow/react/dist/style.css";
+import "@xyflow/react/dist/base.css";
 
-// Wait for the DOM to fully load
 window.addEventListener("DOMContentLoaded", () => {
   const rootElement = document.getElementById("root");
 

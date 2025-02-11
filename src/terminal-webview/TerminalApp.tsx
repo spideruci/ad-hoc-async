@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import { type ReactElement } from "react";
 
-const TerminalApp = () => {
+const TerminalApp = (): ReactElement => {
 
   return (
     <div>
