@@ -1,32 +1,41 @@
 import type * as monacoNamespace from "monaco-editor";
 import { useEffect, useState } from "react";
+import type { Log } from "../../types/message";
+import Timeline from "./Timeline";
 
 interface FunctionOverlayProps {
   startLine: number;
   endLine: number;
   editor: monacoNamespace.editor.IStandaloneCodeEditor;
+  logs: Log[];
 }
 
-const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, editor }): React.ReactElement => {
+const FunctionOverlay: React.FC<FunctionOverlayProps> = (
+  props: FunctionOverlayProps
+): React.ReactElement => {
+  const { startLine, endLine, editor, logs } = props;
   const [scrollTop, setScrollTop] = useState<number>(editor.getScrollTop());
   const [scrollLeft, setScrollLeft] = useState<number>(editor.getScrollLeft());
   const [overlayStyle, setOverlayStyle] = useState<React.CSSProperties>({});
   const [isHovered, setIsHovered] = useState<boolean>(false);
-  const [hoverProvider, setHoverProvider] = useState<monacoNamespace.IDisposable | null>(null);
-  function getMonacoContentWidth(editor: monacoNamespace.editor.IStandaloneCodeEditor): number {
+  const [hoverProvider, setHoverProvider] =
+    useState<monacoNamespace.IDisposable | null>(null);
+  function getMonacoContentWidth(
+    editor: monacoNamespace.editor.IStandaloneCodeEditor
+  ): number {
     const editorNode = editor.getDomNode();
-    if (!editorNode) { return 0; }
-  
-    // Select all visible .view-line elements
+    if (!editorNode) {
+      return 0;
+    }
     const viewLines = editorNode.querySelectorAll(".view-line");
     let totalWidth = 0;
-  
-    viewLines.forEach(line => {
+
+    viewLines.forEach((line) => {
       totalWidth = Math.max(totalWidth, (line as HTMLElement).offsetWidth);
     });
-  
     return totalWidth;
   }
+
   useEffect(() => {
     const handleScroll = (): void => {
       setScrollTop(editor.getScrollTop()); // Update scroll position
@@ -44,21 +53,29 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, e
       const lineNumberGutterWidth = layoutInfo.contentLeft;
 
       const top = editor.getTopForLineNumber(startLine) - scrollTop; // Adjust position
-      const height = editor.getBottomForLineNumber(endLine) - editor.getTopForLineNumber(startLine);
+      const height =
+        editor.getBottomForLineNumber(endLine) -
+        editor.getTopForLineNumber(startLine);
 
       let minColumn = Infinity;
       let minLineNumber = -1;
       for (let line = startLine; line <= endLine; line++) {
-        const firstNonWhitespaceColumn = editor.getModel()?.getLineFirstNonWhitespaceColumn(line) || 0;
-        if (firstNonWhitespaceColumn < minColumn && firstNonWhitespaceColumn !== 0) {
+        const firstNonWhitespaceColumn =
+          editor.getModel()?.getLineFirstNonWhitespaceColumn(line) || 0;
+        if (
+          firstNonWhitespaceColumn < minColumn &&
+          firstNonWhitespaceColumn !== 0
+        ) {
           minColumn = firstNonWhitespaceColumn;
           minLineNumber = line;
         }
       }
 
-      const left = editor.getOffsetForColumn(minLineNumber, minColumn) - scrollLeft + lineNumberGutterWidth;
+      const left =
+        editor.getOffsetForColumn(minLineNumber, minColumn) -
+        scrollLeft +
+        lineNumberGutterWidth;
       const width = getMonacoContentWidth(editor) - left;
-
       setOverlayStyle({
         position: "absolute",
         border: "2px solid rgba(255, 255, 255, 0.5)", // Make white border slightly transparent
@@ -67,6 +84,8 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, e
         height: `${height}px`,
         top: `${top}px`,
         left: `${left}px`,
+        display: "flex",
+        justifyContent: "flex-end",
       });
     };
 
@@ -77,20 +96,19 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, e
     if (hoverProvider) {
       hoverProvider.dispose();
     }
-
-    // Mouse move event listener
-    const handleMouseMove = (e: monacoNamespace.editor.IEditorMouseEvent) => {
+    const handleMouseMove = (
+      e: monacoNamespace.editor.IEditorMouseEvent
+    ): void => {
       const position = e.target.position;
-      if (position && position.lineNumber >= startLine && position.lineNumber <= endLine) {
-        setIsHovered(true);
-      } else {
-        setIsHovered(false);
-      }
+      const isHover =
+        (position &&
+          position.lineNumber >= startLine &&
+          position.lineNumber <= endLine) ||
+        false;
+      setIsHovered(isHover);
     };
-
     const newHoverProvider = editor.onMouseMove(handleMouseMove);
     setHoverProvider(newHoverProvider);
-
     return (): void => {
       newHoverProvider.dispose();
     };
@@ -103,7 +121,7 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, e
         style={{
           display: isHovered ? "block" : "none", // Show only when hovered;
           position: "absolute",
-          top: "-30px", /* Adjust this value to position the tab above the box */
+          top: "-30px" /* Adjust this value to position the tab above the box */,
           left: 0,
           backgroundColor: "white",
           border: "1px solid black",
@@ -112,6 +130,15 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = ({ startLine, endLine, e
         }}
       >
         Tab Content
+      </div>
+      <div
+        style={{
+          width: "50%",
+          height: "100%",
+          backgroundColor: "white",
+        }}
+      >
+        <Timeline logs={logs} startLine={startLine} endLine={endLine} />
       </div>
     </div>
   );

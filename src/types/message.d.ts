@@ -10,14 +10,41 @@ export type ToVSCodeMessage = {
 } | { command: "requestAST" } | { command: "ready" };
 
 export type ToEditorMessage = {
-    language: "javascript" | "typescript";
+    command: "log";
+    log: Log;
+} | {
     command: "parsedAST";
     ast: TSESTree.Node;
+    language: "javascript" | "typescript";
 } | {
     command: "error";
     message: string
 } | {
-    command: "load",
-    text: string,
-    language: string,
-}
+    command: "load";
+    text: string;
+    language: string;
+};
+
+
+export type Log = {
+    filename: string;
+    function: string;
+    lineNumber: number;
+    timestamp: number;
+    type: "statement";
+} | {
+    filename: string;
+    function: string;
+    lineNumber: number;
+    timestamp: number;
+    logData: never[];
+    type: "console.log";
+} | {
+    type: "branch";
+    filename: string;
+    function: string;
+    lineNumber: number;
+    timestamp: number;
+    branchType: string;
+    condition: string;
+};

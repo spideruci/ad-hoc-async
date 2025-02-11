@@ -1,12 +1,13 @@
 import * as vscode from "vscode";
 import { parse } from "@typescript-eslint/typescript-estree";
 import { getNonce } from "./utils/utils";
+import type { Log, ToVSCodeMessage } from "../types/message";
 
 export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider {
   private webviewPanel: vscode.WebviewPanel | null = null;
   constructor(private readonly context: vscode.ExtensionContext) {}
 
-  public handleLogBroadcast(log: any): void {
+  public handleLogBroadcast(log: Log): void {
     if (this.webviewPanel) {
       this.webviewPanel.webview.postMessage({ command: "log", log });
     }
@@ -24,12 +25,13 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
     const language = (fileName.endsWith(".ts") || fileName.endsWith(".tsx")) ? "typescript" : "javascript";
     // ✅ Wait for webview to signal that it's ready
     const readyListener = webviewPanel.webview.onDidReceiveMessage(
-      async (message) => {
+      async (message: ToVSCodeMessage) => {
         if (message.command === "ready") {
           webviewPanel.webview.postMessage({
             command: "load",
             text: document.getText(),
             language: language,
+            fileName: fileName,
           });
 
           // Send AST immediately after loading

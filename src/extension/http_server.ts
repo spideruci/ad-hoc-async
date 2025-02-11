@@ -1,6 +1,7 @@
 import { type Server } from "http";
 import * as vscode from "vscode";
 import express from "express";
+import type { Log } from "../types/message";
 
 export class LogHttpServer {
   private app: express.Express;
@@ -39,7 +40,7 @@ export class LogHttpServer {
     }
   }
 
-  private broadcastLog(log: any): void {
+  private broadcastLog(log: Log): void {
     vscode.commands.executeCommand("co-debugger.broadcastLog", log);
   }
 }

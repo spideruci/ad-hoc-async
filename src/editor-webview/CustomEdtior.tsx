@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type * as monacoNamespace from "monaco-editor";
-import type { VSCodeState, ToVSCodeMessage, ToEditorMessage, Log } from "./message";
+import type { VSCodeState, ToVSCodeMessage, ToEditorMessage } from "../types/message";
 import {
   assignParents,
   findAllTargetChildNodes,
@@ -11,6 +11,7 @@ import {
   type NodeWithParent,
 } from "./ast-utils";
 import FunctionOverlay from "./components/FunctionOverlay";
+import type { Log } from "../types/message";
 
 // maybe use a factory to generate the message
 // { command: "requestAST" } message.createRequestAST();
@@ -30,9 +31,6 @@ const CustomEditor: React.FC = () => {
   const handleMessage = useCallback(
     (event: MessageEvent<ToEditorMessage>) => {
       if (!editorRef.current) { return; }
-      if (event.data.command === "log") {
-        setLogs((prevLogs) => [...prevLogs, event.data.log]);
-      }
       if (event.data.command === "load") {
         editorRef.current.setValue(event.data.text);
         setLanguage(event.data.language);
@@ -53,6 +51,11 @@ const CustomEditor: React.FC = () => {
 
       if (event.data.command === "error") {
         setFunctionBlocks([]);
+      }
+
+      if (event.data.command === "log") {
+        const log = event.data.log;
+        setLogs((prevLogs) => [...prevLogs, log]);
       }
     },
     [monaco]
