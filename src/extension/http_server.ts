@@ -1,6 +1,6 @@
 import { type Server } from "http";
 import * as vscode from "vscode";
-import express from "express";
+import express, { Request, Response } from "express";
 import type { Log } from "../types/message";
 
 export class LogHttpServer {
@@ -18,7 +18,7 @@ export class LogHttpServer {
 
   public start(): void {
     // Define the log route to accept POST requests
-    this.app.post("/logs", (req, res) => {
+    this.app.post("/logs", (req: Request, res: Response) => {
       if (req.body) {
         this.broadcastLog(req.body);
       }
