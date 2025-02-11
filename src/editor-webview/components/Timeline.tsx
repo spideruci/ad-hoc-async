@@ -1,8 +1,14 @@
-import React, { useState, useCallback, useEffect } from "react";
-import type { ResizeEndEvent, Range } from "dnd-timeline";
-import { TimelineContext } from "dnd-timeline";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
+import { useGesture } from "@use-gesture/react";
 import type { Log } from "../../types/message";
-import CustomTimeline from "./CustomTimeline";
 
 interface TimelineProps {
   logs: Log[];
@@ -10,95 +16,64 @@ interface TimelineProps {
   endLine: number;
 }
 
-const getDefaultRange = (logs: Log[]): Range => {
-  if (logs.length === 0) {
-    return {
-      start: 0,
-      end: 1,
-    };
-  }
+export default function Timeline({ logs, startLine, endLine }: TimelineProps) {
+  const [scale, setScale] = useState(1); // Zoom level
+  const [offset, setOffset] = useState(0); // Panning offset
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 400, height: 100 });
 
-  const minTimestamp = Math.min(...logs.map((log) => log.timestamp));
-  const maxTimestamp = Math.max(...logs.map((log) => log.timestamp));
-
-  return {
-    start: minTimestamp,
-    end: maxTimestamp + 1000, // Add a small buffer to ensure visibility
-  };
-};
-
-const Timeline: React.FC<TimelineProps> = ({ logs, startLine, endLine }) => {
-  const [range, setRange] = useState(getDefaultRange(logs));
-
-  const [items, setItems] = useState(
-    logs
-      .filter((log) => log.lineNumber >= startLine && log.lineNumber <= endLine)
-      .map((log, index) => ({
-        id: `log-${index}`,
-        rowId: `row-${log.lineNumber}`,
-        span: {
-          start: log.timestamp,
-          end: log.timestamp + 10,
-        },
-        data: log,
-      }))
-  );
-
+  // Get container size dynamically
   useEffect(() => {
-    setItems(
-      logs
-        .filter(
-          (log) => log.lineNumber >= startLine && log.lineNumber <= endLine
-        )
-        .map((log, index) => ({
-          id: `log-${index}`,
-          rowId: `row-${log.lineNumber}`,
-          span: {
-            start: log.timestamp,
-            end: log.timestamp + 10,
-          },
-          data: log,
-        }))
-    );
-    setRange(getDefaultRange(logs));
-  }, [logs, startLine, endLine]);
-  const rows = Array.from(
-    new Set(
-      logs
-        .filter(
-          (log) => log.lineNumber >= startLine && log.lineNumber <= endLine
-        )
-        .map((log) => log.lineNumber)
-    )
-  ).map((lineNumber) => ({
-    id: `row-${lineNumber}`,
-    lineNumber: lineNumber,
-  }));
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        console.log(containerRef.current.clientWidth)
+        console.log(containerRef.current.clientHeight)
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        });
+      }
+    };
+    updateDimensions(); // Initial size
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, [containerRef]);
 
-  const onResizeEnd = useCallback((event: ResizeEndEvent) => {
-    const updatedSpan =
-      event.active.data.current.getSpanFromResizeEvent?.(event);
-    if (!updatedSpan) {
-      return;
-    }
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === event.active.id ? { ...item, span: updatedSpan } : item
-      )
-    );
-  }, []);
+  // Convert logs to chart data (grouped by timestamp)
+  const chartData = useMemo(() => {
+    return logs
+      .filter((log) => log.lineNumber >= startLine && log.lineNumber <= endLine)
+      .map((log) => ({
+        timestamp: new Date(log.timestamp).toLocaleTimeString(),
+        value: log.lineNumber,
+      }));
+  }, [logs, startLine, endLine]);
+
+  // Handle panning & zooming
+  const bind = useGesture({
+    onWheel: ({ delta: [, dy] }) => {
+      setScale((prev) => Math.max(0.5, Math.min(prev - dy * 0.01, 5)));
+    },
+    onDrag: ({ offset: [dx] }) => {
+      setOffset((prev) =>
+        Math.max(0, Math.min(prev - dx * 0.05, chartData.length - 10))
+      );
+    },
+  });
 
   return (
-    <div style={{ height: "100%", width: "100%", pointerEvents: "auto" }}>
-      <TimelineContext
-        range={range}
-        onRangeChanged={setRange}
-        onResizeEnd={onResizeEnd}
-      >
-        <CustomTimeline rows={rows} items={items} />
-      </TimelineContext>
+    <div
+      ref={containerRef}
+      {...bind()}
+      style={{ width: "100%", height: "100%", overflow: "hidden", userSelect: "none", pointerEvents: "auto" }}
+    >
+      <LineChart width={dimensions.width} height={dimensions.height} data={chartData.slice(offset, offset + 10 * scale)}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="timestamp" />
+        <YAxis reversed domain={["dataMax", "dataMin"]}/> {/* Reversed Y-axis */}
+        <Tooltip />
+        <Line type="stepAfter" dataKey="value" stroke="#8884d8" strokeWidth={2} />
+      </LineChart>
     </div>
   );
-};
-
-export default Timeline;
+}
