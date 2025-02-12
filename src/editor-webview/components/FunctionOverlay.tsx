@@ -22,6 +22,24 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   const [hoverProvider, setHoverProvider] =
     useState<monacoNamespace.IDisposable | null>(null);
   const [cachedLeft, setCachedLeft] = useState<number | null>(null);
+  const [range, setRange] = useState<[number, number]>([0, 0]);
+  const [originalRange, setOriginalRange] = useState<[number, number]>([0, 0]);
+
+  function getMonacoContentWidth(
+    editor: monacoNamespace.editor.IStandaloneCodeEditor
+  ): number {
+    const editorNode = editor.getDomNode();
+    if (!editorNode) {
+      return 0;
+    }
+    const viewLines = editorNode.querySelectorAll(".view-line");
+    let totalWidth = 0;
+
+    viewLines.forEach((line) => {
+      totalWidth = Math.max(totalWidth, (line as HTMLElement).offsetWidth);
+    });
+    return totalWidth;
+  }
 
   useEffect(() => {
     const handleScroll = (): void => {
@@ -42,7 +60,6 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
         editor.getTopForLineNumber(startLine);
 
       let minColumn = Infinity;
-      let minLineNumber = -1;
       for (let line = startLine; line <= endLine; line++) {
         const firstNonWhitespaceColumn =
           editor.getModel()?.getLineFirstNonWhitespaceColumn(line) || 0;
@@ -51,7 +68,6 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
           firstNonWhitespaceColumn !== 0
         ) {
           minColumn = firstNonWhitespaceColumn;
-          minLineNumber = line;
         }
       }
 
@@ -79,6 +95,17 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
 
     calculateOverlayStyle();
   }, [startLine, endLine, editor, scrollTop, scrollLeft, cachedLeft]);
+
+  useEffect(() => {
+    if (logs.length > 0) {
+      const timestamps = logs.map(log => new Date(log.timestamp).getTime());
+      const minTimestamp = Math.min(...timestamps);
+      const maxTimestamp = Math.max(...timestamps);
+      const initialRange: [number, number] = [minTimestamp - 1000, maxTimestamp + 1000];
+      setRange(initialRange);
+      setOriginalRange(initialRange); // Set the original range
+    }
+  }, [logs]);
 
   useEffect(() => {
     if (hoverProvider) {
@@ -126,7 +153,14 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
           backgroundColor: "white",
         }}
       >
-        <Timeline logs={logs} startLine={startLine} endLine={endLine} />
+        <Timeline
+          logs={logs}
+          startLine={startLine}
+          endLine={endLine}
+          range={range}
+          setRange={setRange}
+          originalRange={originalRange}
+        />
       </div>
     </div>
   );
