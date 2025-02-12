@@ -17,8 +17,6 @@ interface TimelineProps {
 }
 
 export default function Timeline({ logs, startLine, endLine }: TimelineProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const chartData = useMemo(() => {
     const groupedLogs: { [key: string]: { timestamp: number; value: number }[] } = {};
 
@@ -65,7 +63,7 @@ export default function Timeline({ logs, startLine, endLine }: TimelineProps) {
   };
 
   return (
-    <div ref={containerRef} style={{ 
+    <div style={{ 
       width: "100%",
       height: "100%",
       position: "relative",
