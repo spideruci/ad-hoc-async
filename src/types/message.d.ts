@@ -31,18 +31,21 @@ export type Log = {
     function: string;
     lineNumber: number;
     timestamp: number;
+    functionKey: number;
     type: "statement";
 } | {
     filename: string;
     function: string;
     lineNumber: number;
     timestamp: number;
+    functionKey: number;
     logData: never[];
     type: "console.log";
 } | {
     type: "branch";
     filename: string;
     function: string;
+    functionKey: number;
     lineNumber: number;
     timestamp: number;
     branchType: string;
