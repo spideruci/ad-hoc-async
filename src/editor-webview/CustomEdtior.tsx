@@ -1,7 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type * as monacoNamespace from "monaco-editor";
-import type { VSCodeState, ToVSCodeMessage, ToEditorMessage } from "../types/message";
+import type {
+  VSCodeState,
+  ToVSCodeMessage,
+  ToEditorMessage,
+} from "../types/message";
 import {
   assignParents,
   findAllTargetChildNodes,
@@ -18,19 +22,26 @@ import type { Log } from "../types/message";
 // not
 const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
-
 const CustomEditor: React.FC = () => {
-  const editorRef = useRef<monacoNamespace.editor.IStandaloneCodeEditor | undefined>(undefined);
+  const editorRef = useRef<
+    monacoNamespace.editor.IStandaloneCodeEditor | undefined
+  >(undefined);
   const monaco = useMonaco();
-  const [language, setLanguage] = useState<string>(vscode.getState()?.language || "typescript");
-  const [functionBlocks, setFunctionBlocks] = useState<{
-    startLine: number;
-    endLine: number;
-  }[]>([]);
+  const [language, setLanguage] = useState<string>(
+    vscode.getState()?.language || "typescript"
+  );
+  const [functionBlocks, setFunctionBlocks] = useState<
+    {
+      startLine: number;
+      endLine: number;
+    }[]
+  >([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const handleMessage = useCallback(
     (event: MessageEvent<ToEditorMessage>) => {
-      if (!editorRef.current) { return; }
+      if (!editorRef.current) {
+        return;
+      }
       if (event.data.command === "load") {
         editorRef.current.setValue(event.data.text);
         setLanguage(event.data.language);
@@ -62,7 +73,9 @@ const CustomEditor: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!monaco) { return; };
+    if (!monaco) {
+      return;
+    }
     vscode.postMessage({ command: "ready" });
 
     window.addEventListener("message", handleMessage);
@@ -83,12 +96,17 @@ const CustomEditor: React.FC = () => {
 
   const highlightLogs = useCallback(
     (ast?: NodeWithParent) => {
-      if (!editorRef.current || !monaco || !ast) { return; };
-      const functionBlocks: { startLine: number; endLine: number; }[] = [];
+      if (!editorRef.current || !monaco || !ast) {
+        return;
+      }
+      const functionBlocks: { startLine: number; endLine: number }[] = [];
       const consoleLogNodes = findAllTargetChildNodes(ast, isConsoleLogNode);
 
       consoleLogNodes.forEach((node) => {
-        const enclosingFunctionNode = findOneTargetParent(node, isFunctionNodes);
+        const enclosingFunctionNode = findOneTargetParent(
+          node,
+          isFunctionNodes
+        );
         if (enclosingFunctionNode) {
           functionBlocks.push({
             startLine: enclosingFunctionNode.loc.start.line,
