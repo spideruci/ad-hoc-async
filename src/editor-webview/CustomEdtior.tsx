@@ -99,7 +99,9 @@ const CustomEditor: React.FC = () => {
       if (!editorRef.current || !monaco || !ast) {
         return;
       }
+
       const functionBlocks: { startLine: number; endLine: number }[] = [];
+      const seenFunctions = new Set<number>(); // set to track unique function blocks based on start lines
       const consoleLogNodes = findAllTargetChildNodes(ast, isConsoleLogNode);
 
       consoleLogNodes.forEach((node) => {
@@ -107,7 +109,12 @@ const CustomEditor: React.FC = () => {
           node,
           isFunctionNodes
         );
-        if (enclosingFunctionNode) {
+        const isUniqueFunction =
+          enclosingFunctionNode &&
+          !seenFunctions.has(enclosingFunctionNode.loc.start.line);
+
+        if (isUniqueFunction) {
+          seenFunctions.add(enclosingFunctionNode.loc.start.line);
           functionBlocks.push({
             startLine: enclosingFunctionNode.loc.start.line,
             endLine: enclosingFunctionNode.loc.end.line,
