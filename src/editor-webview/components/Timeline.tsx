@@ -9,32 +9,26 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { Log } from "../../types/message";
+import { useRange } from "../context-providers/RangeProvider";
+import CustomizedDot from "./CustomizedDot";
 
 interface TimelineProps {
   logs: Log[];
   startLine: number;
   endLine: number;
-  range: [number, number];
-  setRange: React.Dispatch<React.SetStateAction<[number, number]>>;
-  originalRange: [number, number];
 }
 
 export default function Timeline({
   logs,
   startLine,
   endLine,
-  range,
-  setRange,
-  originalRange,
 }: TimelineProps): JSX.Element {
   const chartRef = useRef<HTMLDivElement>(null);
+  const { range, setRange, originalRange } = useRange();
 
   // Group logs by functionKey and convert to chart data
   const chartData = useMemo(() => {
-    const groupedLogs: {
-      [key: string]: { timestamp: number; value: number }[];
-    } = {};
-
+    const groupedLogs: { [key: string]: { timestamp: number; value: number, log: Log}[] } = {};
     logs
       .filter((log) => log.lineNumber >= startLine && log.lineNumber <= endLine)
       .forEach((log) => {
@@ -45,6 +39,7 @@ export default function Timeline({
         groupedLogs[key].push({
           timestamp: new Date(log.timestamp).getTime(),
           value: log.lineNumber,
+          log,
         });
       });
 
@@ -61,7 +56,15 @@ export default function Timeline({
 
   // Update selection when functionKeys change (select all by default)
   useEffect(() => {
-    setSelectedFunctions(new Set(functionKeys));
+    setSelectedFunctions((prevSelected) => {
+      const newSelected = new Set(prevSelected);
+      functionKeys.forEach((key) => {
+        if (!prevSelected.has(key)) {
+          newSelected.add(key);
+        }
+      });
+      return newSelected;
+    });
   }, [functionKeys]);
 
   const toggleFunction = (key: string): void => {
@@ -81,10 +84,21 @@ export default function Timeline({
   useEffect(() => {
     const handleWheel = (event: WheelEvent): void => {
       event.preventDefault();
-      const delta = event.deltaY > 0 ? 1.1 : 0.9; // Zoom in or out
+      const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9; // Zoom in or out
+
+      const chartElement = chartRef.current;
+      if (!chartElement) { return; }
+
+      const rect = chartElement.getBoundingClientRect();
+      const cursorX = event.clientX - rect.left;
+      const cursorRatio = cursorX / rect.width;
+
       setRange(([min, max]) => {
-        const newMin = Math.max(originalRange[0], min * delta);
-        const newMax = Math.min(originalRange[1], max * delta);
+        const rangeSize = max - min;
+        const newRangeSize = rangeSize * zoomFactor;
+        const cursorValue = min + rangeSize * cursorRatio;
+        const newMin = Math.max(originalRange[0], cursorValue - newRangeSize * cursorRatio);
+        const newMax = Math.min(originalRange[1], cursorValue + newRangeSize * (1 - cursorRatio));
         return [newMin, newMax];
       });
     };
@@ -99,7 +113,7 @@ export default function Timeline({
         chartElement.removeEventListener("wheel", handleWheel);
       }
     };
-  }, [originalRange]);
+  }, [originalRange, setRange]);
 
   return (
     <div
@@ -151,29 +165,29 @@ export default function Timeline({
 
       {/* Chart */}
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart>
+        <LineChart syncId={"timelinesync"} syncMethod="value">
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="timestamp" type="number" domain={range} />
-          <YAxis reversed domain={["dataMax", "dataMin"]} />
+          <XAxis dataKey="timestamp" type="number" domain={range} allowDataOverflow hide/>
+          <YAxis reversed domain={["dataMax", "dataMin"]} allowDataOverflow allowDecimals={false}/>
           <Tooltip
             formatter={(value) => [`${value}`, "Value"]}
             labelFormatter={(label) => `Timestamp: ${label}`}
             contentStyle={{ color: "#000000", height: "100%" }}
             itemStyle={{ color: "#000000" }}
-          />{" "}
-          {/* Render only selected function keys */}
+          />
           {Object.keys(chartData)
             .filter((key) => selectedFunctions.has(key)) // Only render selected functions
             .map((key) => (
               <Line
                 key={key}
-                type="step"
+                type="stepBefore"
                 dataKey="value"
                 data={chartData[key]}
                 name={key}
                 stroke="#ffffff"
                 fill="#ffffff"
                 strokeWidth="1.392px"
+                dot={(props) => <CustomizedDot {...props}/>}
               />
             ))}
         </LineChart>

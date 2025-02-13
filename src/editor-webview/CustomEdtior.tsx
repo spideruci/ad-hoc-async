@@ -16,10 +16,9 @@ import {
 } from "./ast-utils";
 import FunctionOverlay from "./components/FunctionOverlay";
 import type { Log } from "../types/message";
+import { RangeProvider, useRange } from "./context-providers/RangeProvider";
+import { OverlayWidthProvider } from "./context-providers/OverlayWidthProvider";
 
-// maybe use a factory to generate the message
-// { command: "requestAST" } message.createRequestAST();
-// not
 const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
 const CustomEditor: React.FC = () => {
@@ -37,6 +36,8 @@ const CustomEditor: React.FC = () => {
     }[]
   >([]);
   const [logs, setLogs] = useState<Log[]>([]);
+  const { setRange, setOriginalRange } = useRange();
+
   const handleMessage = useCallback(
     (event: MessageEvent<ToEditorMessage>) => {
       if (!editorRef.current) {
@@ -127,6 +128,17 @@ const CustomEditor: React.FC = () => {
     [monaco]
   );
 
+  useEffect(() => {
+    if (logs.length > 0) {
+      const timestamps = logs.map(log => new Date(log.timestamp).getTime());
+      const minTimestamp = Math.min(...timestamps);
+      const maxTimestamp = Math.max(...timestamps);
+      const initialRange: [number, number] = [minTimestamp - 1000, maxTimestamp + 1000];
+      setRange(initialRange);
+      setOriginalRange(initialRange); // Set the original range
+    }
+  }, [logs, setRange, setOriginalRange]);
+
   return (
     <div style={{ height: "100vh", width: "100%", position: "relative" }}>
       <Editor
@@ -150,4 +162,12 @@ const CustomEditor: React.FC = () => {
   );
 };
 
-export default CustomEditor;
+const CustomEditorWithProvider: React.FC = () => (
+  <RangeProvider>
+    <OverlayWidthProvider>
+      <CustomEditor />
+    </OverlayWidthProvider>
+  </RangeProvider>
+);
+
+export default CustomEditorWithProvider;

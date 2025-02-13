@@ -1,8 +1,9 @@
 import type * as monacoNamespace from "monaco-editor";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Log } from "../../types/message";
 import Timeline from "./Timeline";
 import { calculateLeftPosition, getMonacoContentWidth } from "../editor-utils";
+import { useOverlayWidth } from "../context-providers/OverlayWidthProvider";
 
 interface FunctionOverlayProps {
   startLine: number;
@@ -22,8 +23,11 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   const [hoverProvider, setHoverProvider] =
     useState<monacoNamespace.IDisposable | null>(null);
   const [cachedLeft, setCachedLeft] = useState<number | null>(null);
-  const [range, setRange] = useState<[number, number]>([0, 0]);
-  const [originalRange, setOriginalRange] = useState<[number, number]>([0, 0]);
+  const { overlayWidth, setOverlayWidth } = useOverlayWidth();
+  const draggerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef<boolean>(false);
+  const initialMouseX = useRef<number>(0);
+  const initialWidth = useRef<number>(overlayWidth);
 
   function getMonacoContentWidth(
     editor: monacoNamespace.editor.IStandaloneCodeEditor
@@ -97,17 +101,6 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   }, [startLine, endLine, editor, scrollTop, scrollLeft, cachedLeft]);
 
   useEffect(() => {
-    if (logs.length > 0) {
-      const timestamps = logs.map(log => new Date(log.timestamp).getTime());
-      const minTimestamp = Math.min(...timestamps);
-      const maxTimestamp = Math.max(...timestamps);
-      const initialRange: [number, number] = [minTimestamp - 1000, maxTimestamp + 1000];
-      setRange(initialRange);
-      setOriginalRange(initialRange); // Set the original range
-    }
-  }, [logs]);
-
-  useEffect(() => {
     if (hoverProvider) {
       hoverProvider.dispose();
     }
@@ -129,6 +122,34 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
     };
   }, [editor, startLine, endLine]);
 
+  const handleMouseDown = (e: React.MouseEvent): void => {
+    isDragging.current = true;
+    initialMouseX.current = e.clientX;
+    initialWidth.current = overlayWidth;
+  };
+
+  const handleMouseMove = (e: MouseEvent): void => {
+    if (isDragging.current) {
+      const deltaX = e.clientX - initialMouseX.current;
+      const newWidth = initialWidth.current - deltaX;
+      setOverlayWidth(newWidth);
+    }
+  };
+
+  const handleMouseUp = (): void => {
+    isDragging.current = false;
+  };
+
+  useEffect(() => {
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return (): void => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
   return (
     <div className="overlay-box" style={overlayStyle}>
       <div
@@ -146,20 +167,33 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
       >
         Tab Content
       </div>
+
       <div
         style={{
-          width: "50%",
+          position: "relative",
+          width: `${overlayWidth}px`,
           height: "100%",
           backgroundColor: "white",
         }}
       >
+        <div
+          ref={draggerRef}
+          onMouseDown={handleMouseDown}
+          style={{
+            position: "absolute",
+            pointerEvents: "auto",
+            left: "0px",
+            width: "5px",
+            height: "100%",
+            cursor: "ew-resize",
+            backgroundColor: "rgba(0, 0, 0, 0.2)",
+            zIndex: 10,
+          }}
+        />
         <Timeline
           logs={logs}
           startLine={startLine}
           endLine={endLine}
-          range={range}
-          setRange={setRange}
-          originalRange={originalRange}
         />
       </div>
     </div>
