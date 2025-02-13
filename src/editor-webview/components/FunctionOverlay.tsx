@@ -2,6 +2,7 @@ import type * as monacoNamespace from "monaco-editor";
 import { useEffect, useState } from "react";
 import type { Log } from "../../types/message";
 import Timeline from "./Timeline";
+import { calculateLeftPosition, getMonacoContentWidth } from "../editor-utils";
 
 interface FunctionOverlayProps {
   startLine: number;
@@ -20,21 +21,7 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [hoverProvider, setHoverProvider] =
     useState<monacoNamespace.IDisposable | null>(null);
-  function getMonacoContentWidth(
-    editor: monacoNamespace.editor.IStandaloneCodeEditor
-  ): number {
-    const editorNode = editor.getDomNode();
-    if (!editorNode) {
-      return 0;
-    }
-    const viewLines = editorNode.querySelectorAll(".view-line");
-    let totalWidth = 0;
-
-    viewLines.forEach((line) => {
-      totalWidth = Math.max(totalWidth, (line as HTMLElement).offsetWidth);
-    });
-    return totalWidth;
-  }
+  const [cachedLeft, setCachedLeft] = useState<number | null>(null);
 
   useEffect(() => {
     const handleScroll = (): void => {
@@ -49,10 +36,7 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
 
   useEffect(() => {
     const calculateOverlayStyle = (): void => {
-      const layoutInfo = editor.getLayoutInfo();
-      const lineNumberGutterWidth = layoutInfo.contentLeft;
-
-      const top = editor.getTopForLineNumber(startLine) - scrollTop; // Adjust position
+      const top = editor.getTopForLineNumber(startLine) - scrollTop;
       const height =
         editor.getBottomForLineNumber(endLine) -
         editor.getTopForLineNumber(startLine);
@@ -71,10 +55,14 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
         }
       }
 
-      const left =
-        editor.getOffsetForColumn(minLineNumber, minColumn) -
-        scrollLeft +
-        lineNumberGutterWidth;
+      const left = calculateLeftPosition(
+        editor,
+        startLine,
+        endLine,
+        scrollLeft,
+        cachedLeft,
+        setCachedLeft
+      );
       const width = getMonacoContentWidth(editor) - left;
       setOverlayStyle({
         position: "absolute",
@@ -90,7 +78,7 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
     };
 
     calculateOverlayStyle();
-  }, [startLine, endLine, editor, scrollTop, scrollLeft]);
+  }, [startLine, endLine, editor, scrollTop, scrollLeft, cachedLeft]);
 
   useEffect(() => {
     if (hoverProvider) {
