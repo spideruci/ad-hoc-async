@@ -62,3 +62,19 @@ export function calculateLeftPosition(
 
   return cachedLeft ?? contentLeft;
 }
+
+export function getMonacoContentWidth(
+  editor: monacoNamespace.editor.IStandaloneCodeEditor
+): number {
+  const editorNode = editor.getDomNode();
+  if (!editorNode) {
+    return 0;
+  }
+  const viewLines = editorNode.querySelectorAll(".view-line");
+  let totalWidth = 0;
+
+  viewLines.forEach((line) => {
+    totalWidth = Math.max(totalWidth, (line as HTMLElement).offsetWidth);
+  });
+  return totalWidth;
+}

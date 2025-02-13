@@ -2,7 +2,7 @@ import type * as monacoNamespace from "monaco-editor";
 import { useEffect, useState } from "react";
 import type { Log } from "../../types/message";
 import Timeline from "./Timeline";
-import { calculateLeftPosition } from "../editor-utils";
+import { calculateLeftPosition, getMonacoContentWidth } from "../editor-utils";
 
 interface FunctionOverlayProps {
   startLine: number;
@@ -22,22 +22,6 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   const [hoverProvider, setHoverProvider] =
     useState<monacoNamespace.IDisposable | null>(null);
   const [cachedLeft, setCachedLeft] = useState<number | null>(null);
-
-  function getMonacoContentWidth(
-    editor: monacoNamespace.editor.IStandaloneCodeEditor
-  ): number {
-    const editorNode = editor.getDomNode();
-    if (!editorNode) {
-      return 0;
-    }
-    const viewLines = editorNode.querySelectorAll(".view-line");
-    let totalWidth = 0;
-
-    viewLines.forEach((line) => {
-      totalWidth = Math.max(totalWidth, (line as HTMLElement).offsetWidth);
-    });
-    return totalWidth;
-  }
 
   useEffect(() => {
     const handleScroll = (): void => {
