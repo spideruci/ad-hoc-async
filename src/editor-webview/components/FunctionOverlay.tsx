@@ -2,7 +2,7 @@ import type * as monacoNamespace from "monaco-editor";
 import { useEffect, useState, useRef } from "react";
 import type { Log } from "../../types/message";
 import Timeline from "./Timeline";
-import { calculateLeftPosition, getMonacoContentWidth } from "../editor-utils";
+import { calculateLeftPosition } from "../editor-utils";
 import { useOverlayWidth } from "../context-providers/OverlayWidthProvider";
 
 interface FunctionOverlayProps {
@@ -183,10 +183,10 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
             position: "absolute",
             pointerEvents: "auto",
             left: "0px",
-            width: "5px",
+            width: "2px",
             height: "100%",
             cursor: "ew-resize",
-            backgroundColor: "rgba(0, 0, 0, 0.2)",
+            backgroundColor: "rgba(255, 255, 255, 1)",
             zIndex: 10,
           }}
         />

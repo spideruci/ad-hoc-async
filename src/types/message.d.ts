@@ -28,14 +28,14 @@ export type ToEditorMessage = {
 
 export type Log = {
     filename: string;
-    function: string;
+    functionName: string;
     lineNumber: number;
     timestamp: number;
     functionKey: number;
     type: "statement";
 } | {
     filename: string;
-    function: string;
+    functionName: string;
     lineNumber: number;
     timestamp: number;
     functionKey: number;
@@ -44,7 +44,7 @@ export type Log = {
 } | {
     type: "branch";
     filename: string;
-    function: string;
+    functionName: string;
     functionKey: number;
     lineNumber: number;
     timestamp: number;
