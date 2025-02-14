@@ -1,6 +1,7 @@
 import { type Server } from "http";
 import * as vscode from "vscode";
-import express, { Request, Response } from "express";
+import type { Response } from "express";
+import express, { type Request } from "express";
 import type { Log } from "../types/message";
 
 export class LogHttpServer {

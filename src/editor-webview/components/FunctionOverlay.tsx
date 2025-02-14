@@ -1,8 +1,9 @@
 import type * as monacoNamespace from "monaco-editor";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Log } from "../../types/message";
 import Timeline from "./Timeline";
-import { calculateLeftPosition, getMonacoContentWidth } from "../editor-utils";
+import { calculateLeftPosition } from "../editor-utils";
+import { useOverlayWidth } from "../context-providers/OverlayWidthProvider";
 
 interface FunctionOverlayProps {
   startLine: number;
@@ -22,6 +23,27 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   const [hoverProvider, setHoverProvider] =
     useState<monacoNamespace.IDisposable | null>(null);
   const [cachedLeft, setCachedLeft] = useState<number | null>(null);
+  const { overlayWidth, setOverlayWidth } = useOverlayWidth();
+  const draggerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef<boolean>(false);
+  const initialMouseX = useRef<number>(0);
+  const initialWidth = useRef<number>(overlayWidth);
+
+  function getMonacoContentWidth(
+    editor: monacoNamespace.editor.IStandaloneCodeEditor
+  ): number {
+    const editorNode = editor.getDomNode();
+    if (!editorNode) {
+      return 0;
+    }
+    const viewLines = editorNode.querySelectorAll(".view-line");
+    let totalWidth = 0;
+
+    viewLines.forEach((line) => {
+      totalWidth = Math.max(totalWidth, (line as HTMLElement).offsetWidth);
+    });
+    return totalWidth;
+  }
 
   useEffect(() => {
     const handleScroll = (): void => {
@@ -42,7 +64,6 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
         editor.getTopForLineNumber(startLine);
 
       let minColumn = Infinity;
-      let minLineNumber = -1;
       for (let line = startLine; line <= endLine; line++) {
         const firstNonWhitespaceColumn =
           editor.getModel()?.getLineFirstNonWhitespaceColumn(line) || 0;
@@ -51,7 +72,6 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
           firstNonWhitespaceColumn !== 0
         ) {
           minColumn = firstNonWhitespaceColumn;
-          minLineNumber = line;
         }
       }
 
@@ -102,6 +122,34 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
     };
   }, [editor, startLine, endLine]);
 
+  const handleMouseDown = (e: React.MouseEvent): void => {
+    isDragging.current = true;
+    initialMouseX.current = e.clientX;
+    initialWidth.current = overlayWidth;
+  };
+
+  const handleMouseMove = (e: MouseEvent): void => {
+    if (isDragging.current) {
+      const deltaX = e.clientX - initialMouseX.current;
+      const newWidth = initialWidth.current - deltaX;
+      setOverlayWidth(newWidth);
+    }
+  };
+
+  const handleMouseUp = (): void => {
+    isDragging.current = false;
+  };
+
+  useEffect(() => {
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return (): void => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
   return (
     <div className="overlay-box" style={overlayStyle}>
       <div
@@ -119,14 +167,34 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
       >
         Tab Content
       </div>
+
       <div
         style={{
-          width: "50%",
+          position: "relative",
+          width: `${overlayWidth}px`,
           height: "100%",
           backgroundColor: "white",
         }}
       >
-        <Timeline logs={logs} startLine={startLine} endLine={endLine} />
+        <div
+          ref={draggerRef}
+          onMouseDown={handleMouseDown}
+          style={{
+            position: "absolute",
+            pointerEvents: "auto",
+            left: "0px",
+            width: "2px",
+            height: "100%",
+            cursor: "ew-resize",
+            backgroundColor: "rgba(255, 255, 255, 1)",
+            zIndex: 10,
+          }}
+        />
+        <Timeline
+          logs={logs}
+          startLine={startLine}
+          endLine={endLine}
+        />
       </div>
     </div>
   );
