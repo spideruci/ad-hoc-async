@@ -32,6 +32,12 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.21.2
+      highcharts:
+        specifier: ^12.1.2
+        version: 12.1.2
+      highcharts-react-official:
+        specifier: ^3.2.1
+        version: 3.2.1(highcharts@12.1.2)(react@18.3.1)
       monaco-editor:
         specifier: ^0.52.2
         version: 0.52.2
@@ -1519,6 +1525,15 @@ packages:
   he@1.2.0:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
+
+  highcharts-react-official@3.2.1:
+    resolution: {integrity: sha512-hyQTX7ezCxl7JqumaWiGsroGWalzh24GedQIgO3vJbkGOZ6ySRAltIYjfxhrq4HszJOySZegotEF7v+haQ75UA==}
+    peerDependencies:
+      highcharts: '>=6.0.0'
+      react: '>=16.8.0'
+
+  highcharts@12.1.2:
+    resolution: {integrity: sha512-paZ72q1um0zZT1sS+O/3JfXVSOLPmZ0zlo8SgRc0rEplPFPQUPc4VpkgQS8IUTueeOBgIWwVpAWyC9tBYbQ0kg==}
 
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
@@ -4462,6 +4477,13 @@ snapshots:
       function-bind: 1.1.2
 
   he@1.2.0: {}
+
+  highcharts-react-official@3.2.1(highcharts@12.1.2)(react@18.3.1):
+    dependencies:
+      highcharts: 12.1.2
+      react: 18.3.1
+
+  highcharts@12.1.2: {}
 
   hoist-non-react-statics@3.3.2:
     dependencies:

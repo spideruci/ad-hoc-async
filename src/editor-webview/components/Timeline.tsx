@@ -1,32 +1,98 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import type { ActionMeta, MultiValue } from "react-select";
 import Select from "react-select";
+import * as Highcharts from "highcharts";
+import HighchartsReact from "highcharts-react-official";
+import "highcharts/modules/boost";
 import type { Log } from "../../types/message";
 import { useRange } from "../context-providers/RangeProvider";
-import CustomizedDot from "./CustomizedDot";
 
+// --- Types ---
 interface TimelineProps {
   logs: Log[];
   startLine: number;
   endLine: number;
 }
 
-export default function Timeline({
+// Store each point’s original Log data in Highcharts
+interface CustomLogPoint extends Highcharts.PointOptionsObject {
+  log: Log;
+}
+
+interface SelectFunctionInvocationProps {
+  options: { value: string; label: string }[];
+  selectedFunctions: Set<string>;
+  handleSelectChange: (
+    newValue: MultiValue<{ value: string; label: string }>,
+    actionMeta: ActionMeta<{ value: string; label: string }>
+  ) => void;
+}
+
+// Multi-Select for Functions
+const SelectFunctionInvocation = ({
+  options,
+  selectedFunctions,
+  handleSelectChange,
+}: SelectFunctionInvocationProps) => {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: "-40px",
+        left: "10px",
+        zIndex: 10,
+        display: "flex",
+        gap: "5px",
+        flexWrap: "wrap",
+      }}
+    >
+      <Select
+        isMulti
+        options={options}
+        value={options.filter((option) => selectedFunctions.has(option.value))}
+        closeMenuOnSelect={false}
+        onChange={handleSelectChange}
+        styles={{
+          control: (base) => ({
+            ...base,
+            backgroundColor: "#333",
+            borderColor: "#555",
+            color: "#fff",
+          }),
+          menu: (base) => ({
+            ...base,
+            backgroundColor: "#333",
+            color: "#fff",
+          }),
+          multiValue: (base) => ({
+            ...base,
+            backgroundColor: "#555",
+            color: "#fff",
+          }),
+          multiValueLabel: (base) => ({ ...base, color: "#fff" }),
+          multiValueRemove: (base) => ({
+            ...base,
+            color: "#fff",
+            ":hover": { backgroundColor: "#777", color: "#fff" },
+          }),
+        }}
+      />
+    </div>
+  );
+};
+
+export default function TimelineHighcharts({
   logs,
   startLine,
   endLine,
 }: TimelineProps): JSX.Element {
-  const chartRef = useRef<HTMLDivElement>(null);
-  const { range, setRange, originalRange } = useRange();
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartComponentRef = useRef<HighchartsReact.RefObject>(null);
+
+  // Range context
+  const { range, setRange } = useRange();
+
+  // Map functionName->functionKey->(label index)
   const functionKeyMapping = useMemo(() => {
     const mapping: Record<string, Record<string, number>> = {};
     const counters: Record<string, number> = {};
@@ -36,23 +102,27 @@ export default function Timeline({
     sortedLogs
       .filter((log) => log.lineNumber >= startLine && log.lineNumber <= endLine)
       .forEach((log) => {
-        if (!(log.functionName in mapping)) {
+        if (!mapping[log.functionName]) {
           mapping[log.functionName] = {};
           counters[log.functionName] = 1;
         }
-        if (!(log.functionKey in mapping[log.functionName])) {
-          mapping[log.functionName][log.functionKey] = counters[log.functionName];
-          counters[log.functionName] = counters[log.functionName] + 1;
+        if (!mapping[log.functionName][log.functionKey]) {
+          mapping[log.functionName][log.functionKey] =
+            counters[log.functionName];
+          counters[log.functionName] += 1;
         }
       });
+
     return mapping;
-  }, [logs]);
-  // Group logs by functionKey and convert to chart data
+  }, [logs, startLine, endLine]);
+
+  // Group logs by function key
   const chartData = useMemo(() => {
     const groupedLogs: Record<
       string,
       { timestamp: number; value: number; log: Log }[]
     > = {};
+
     logs
       .filter((log) => log.lineNumber >= startLine && log.lineNumber <= endLine)
       .forEach((log) => {
@@ -66,79 +136,222 @@ export default function Timeline({
           log,
         });
       });
+
     return groupedLogs;
   }, [logs, startLine, endLine]);
 
-  // Get function keys for floating tabs
+  // All possible function keys
   const functionKeys = useMemo(() => Object.keys(chartData), [chartData]);
 
-  // Multi-select state for function keys, defaulting to all selected
+  // Multi-select (defaults to all selected)
   const [selectedFunctions, setSelectedFunctions] = useState(
     new Set(functionKeys)
   );
-
-  // Update selection when functionKeys change (select all by default)
   useEffect(() => {
     setSelectedFunctions(new Set(functionKeys));
   }, [functionKeys]);
 
+  const yPlotBands = useMemo(() => {
+    if (!startLine || !endLine) { return []; }
+  
+    return Array.from({ length: endLine - startLine + 1 }, (_, i) => {
+      const yValue = startLine + i;
+      return {
+        from: yValue - 0.5,
+        to: yValue + 0.5,
+        color: yValue % 2 === 0 ? "rgba(68, 170, 213, 0.1)" : "rgba(0, 0, 0, 0)",
+        label: {
+          text: `${yValue}`, // Label each band with its value
+          style: {
+            color: "#606060",
+          },
+        },
+      };
+    });
+  }, [startLine, endLine]);
+
+  // For the dropdown
+  const options = useMemo(
+    () =>
+      functionKeys.map((key) => {
+        const [functionName, functionKey] = key.split("::-::");
+        const labelIndex = functionKeyMapping[functionName][functionKey];
+        return { value: key, label: String(labelIndex) };
+      }),
+    [functionKeyMapping, functionKeys]
+  );
+
   const handleSelectChange = (
     newValue: MultiValue<{ value: string; label: string }>,
     _actionMeta: ActionMeta<{ value: string; label: string }>
-  ): void => {
-    const selectedKeys = new Set(newValue.map((option) => option.value));
-    setSelectedFunctions(selectedKeys);
+  ) => {
+    setSelectedFunctions(new Set(newValue.map((option) => option.value)));
   };
 
-  useEffect(() => {
-    const handleWheel = (event: WheelEvent): void => {
-      event.preventDefault();
-      const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9;
-      const chartElement = chartRef.current;
-      if (!chartElement) {
-        return;
-      }
-      const rect = chartElement.getBoundingClientRect();
-      const cursorX = event.clientX - rect.left;
-      const cursorRatio = cursorX / rect.width;
-      setRange(([min, max]) => {
-        const rangeSize = max - min;
-        const newRangeSize = rangeSize * zoomFactor;
-        const cursorValue = min + rangeSize * cursorRatio;
-        const newMin = Math.max(
-          originalRange[0],
-          cursorValue - newRangeSize * cursorRatio
+  /**
+   * Build 2 series per functionKey:
+   * 1) A line series with non-console.log points (no mouse tracking)
+   * 2) A scatter series with console.log points (mouse tracking enabled)
+   */
+  const series = useMemo(() => {
+    return functionKeys
+      .filter((key) => selectedFunctions.has(key))
+      .flatMap((key) => {
+        const sortedData = [...chartData[key]].sort(
+          (a, b) => a.timestamp - b.timestamp
         );
-        const newMax = Math.min(
-          originalRange[1],
-          cursorValue + newRangeSize * (1 - cursorRatio)
-        );
-        return [newMin, newMax];
-      });
-    };
-    const chartElement = chartRef.current;
-    if (chartElement) {
-      chartElement.addEventListener("wheel", handleWheel);
-    }
-    return (): void => {
-      if (chartElement) {
-        chartElement.removeEventListener("wheel", handleWheel);
-      }
-    };
-  }, [originalRange, setRange]);
+        // Non-console.log => line
+        const lineData = sortedData
+          .filter((d) => d.log.type !== "console.log")
+          .map((d) => ({
+            x: d.timestamp,
+            y: d.value,
+            log: d.log,
+          }));
 
-  const options = functionKeys.map((key) => {
-    const functionName = key.split("::-::")[0];
-    const functionKey = key.split("::-::")[1];
+        // console.log => scatter
+        const scatterData = sortedData
+          .filter((d) => d.log.type === "console.log")
+          .map((d) => ({
+            x: d.timestamp,
+            y: d.value,
+            log: d.log,
+          }));
+
+        return [
+          {
+            name: `${key}-line`,
+            type: "line" as const,
+            step: "left" as const,
+            data: lineData,
+            marker: { enabled: false },
+            enableMouseTracking: false, // no hover or tooltips for non-console logs
+          },
+          {
+            name: `${key}-scatter`,
+            type: "scatter" as const,
+            data: scatterData,
+            enableMouseTracking: true, // default anyway, but explicit
+            marker: {
+              symbol: "circle",
+              radius: 3,
+              fillColor: "#FF0000",
+            },
+          },
+        ];
+      });
+  }, [chartData, functionKeys, selectedFunctions]);
+
+  // Build final Highcharts config
+  const chartOptions: Highcharts.Options = useMemo(() => {
     return {
-      value: key,
-      label: String(functionKeyMapping[functionName][functionKey]), // Display as 1, 2, 3...
+      boost: {
+        enabled: true,
+        useGPUTranslations: true,
+        seriesThreshold: 20,
+      },
+      chart: {
+        spacing: [0,0,0,0],
+        zooming: {
+          type: "x",
+          
+        },
+        backgroundColor: "#1e1e1e",
+        // Pan + mouseWheel
+        panning: {
+          enabled: true,
+          followTouchMove: false,
+          type: "x",
+        },
+        panKey: "shift",
+      },
+      title: { text: undefined },
+      xAxis: {
+        visible: false,
+        type: "datetime",
+        min: range[0],
+        max: range[1],
+        tickLength: 0,
+        lineColor: "#999",
+        tickColor: "#999",
+        events: {
+          setExtremes: function (e) {
+            // only update context if user-driven
+            if (e.trigger !== "sync" && e.min !== null && e.max !== null) {
+              setRange([e.min, e.max]);
+            }
+          },
+        },
+      },
+      yAxis: {
+        reversed: true,
+        tickLength: 0,
+        lineColor: "#999",
+        gridLineWidth: 0,
+        tickColor: "#999",
+        title: { text: "" },
+        plotBands: yPlotBands,
+        zoomEnabled: false,
+        min: startLine,
+        max: endLine,
+      },
+      legend: { enabled: false },
+      tooltip: {
+        split: true,
+        crosshairs: true,
+        formatter: function () {
+          const log = (this.options as CustomLogPoint).log;
+          if (log?.type && log.type === "console.log") {
+            return `${log.logData.map(d => `${JSON.stringify(d)}<br/>`)}`;
+          } else {
+            return false;
+          }
+        } as Highcharts.TooltipFormatterCallbackFunction,
+        backgroundColor: "#fff",
+        style: { color: "#000" },
+      },
+      plotOptions: {
+        series: {
+          inactiveOtherPoints: true,
+        },
+        line: {
+          boostThreshold: 1,
+          lineWidth: 1,
+          marker: {
+            states: {
+              inactive: {
+                enabled: true,
+                opacity: 0.2,
+              },
+            },
+          },
+        },
+      },
+      credits: { enabled: false },
+      series: series as Highcharts.SeriesOptionsType[],
     };
-  });
+  }, [range, series, setRange, yPlotBands]);
+
+  // Keep chart in sync if external range changes
+  useEffect(() => {
+    const chartObj = chartComponentRef.current?.chart;
+    if (!chartObj) {
+      return;
+    }
+
+    const currentMin = chartObj.xAxis[0].min;
+    const currentMax = chartObj.xAxis[0].max;
+
+    if (currentMin !== range[0] || currentMax !== range[1]) {
+      chartObj.xAxis[0].setExtremes(range[0], range[1], true, false, {
+        trigger: "sync",
+      });
+    }
+  }, [range]);
 
   return (
     <div
-      ref={chartRef}
+      ref={chartContainerRef}
       style={{
         width: "100%",
         height: "100%",
@@ -148,88 +361,18 @@ export default function Timeline({
         backgroundColor: "#1e1e1e",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: "-40px",
-          left: "10px",
-          zIndex: 10,
-          display: "flex",
-          gap: "5px",
-          flexWrap: "wrap",
-        }}
-      >
-        <Select
-          isMulti
-          options={options}
-          value={options.filter((option) =>
-            selectedFunctions.has(option.value)
-          )}
-          onChange={handleSelectChange}
-          styles={{
-            control: (base) => ({
-              ...base,
-              backgroundColor: "#333",
-              borderColor: "#555",
-              color: "#fff",
-            }),
-            menu: (base) => ({
-              ...base,
-              backgroundColor: "#333",
-              color: "#fff",
-            }),
-            multiValue: (base) => ({
-              ...base,
-              backgroundColor: "#555",
-              color: "#fff",
-            }),
-            multiValueLabel: (base) => ({ ...base, color: "#fff" }),
-            multiValueRemove: (base) => ({
-              ...base,
-              color: "#fff",
-              ":hover": { backgroundColor: "#777", color: "#fff" },
-            }),
-          }}
-        />
-      </div>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart syncId="timelinesync" syncMethod="value">
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="timestamp"
-            type="number"
-            domain={range}
-            allowDataOverflow
-            hide
-          />
-          <YAxis
-            reversed
-            domain={["dataMax", "dataMin"]}
-            allowDataOverflow
-            allowDecimals={false}
-          />
-          <Tooltip
-            formatter={(value) => [`${value}`, "Value"]}
-            labelFormatter={(label) => `Timestamp: ${label}`}
-            contentStyle={{ color: "#000000" }}
-            itemStyle={{ color: "#000000" }}
-          />
-          {functionKeys
-            .filter((key) => selectedFunctions.has(key))
-            .map((key) => (
-              <Line
-                key={key}
-                type="stepBefore"
-                dataKey="value"
-                data={chartData[key]}
-                stroke="#ffffff"
-                fill="#ffffff"
-                strokeWidth="1.392px"
-                dot={(props) => <CustomizedDot {...props} />}
-              />
-            ))}
-        </LineChart>
-      </ResponsiveContainer>
+      <SelectFunctionInvocation
+        options={options}
+        selectedFunctions={selectedFunctions}
+        handleSelectChange={handleSelectChange}
+      />
+
+      <HighchartsReact
+        ref={chartComponentRef}
+        highcharts={Highcharts}
+        options={chartOptions}
+        containerProps={{ style: { height: "100%", width: "100%" } }}
+      />
     </div>
   );
 }
