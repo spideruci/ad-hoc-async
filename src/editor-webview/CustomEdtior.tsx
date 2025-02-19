@@ -132,7 +132,9 @@ const CustomEditor: React.FC = () => {
     if (logs.length > 0) {
       const timestamps = logs.map(log => new Date(log.timestamp).getTime());
       const maxTimestamp = Math.max(...timestamps);
-      const initialRange: [number, number] = [maxTimestamp - 1000, maxTimestamp + 1000];
+      const minTimestamp = Math.min(...timestamps);
+
+      const initialRange: [number, number] = [minTimestamp - 1000, maxTimestamp + 1000];
       setRange(initialRange);
       setOriginalRange(initialRange); // Set the original range
     }

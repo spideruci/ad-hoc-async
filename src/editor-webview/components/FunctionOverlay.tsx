@@ -154,22 +154,6 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
       }}
     >
       <div
-        className="overlay-tab"
-        style={{
-          display: !isScrolling ? "block" : "none", // Hide tab when scrolling
-          position: "absolute",
-          top: "-30px", // Adjust this value to position the tab above the box
-          left: 0,
-          backgroundColor: "white",
-          border: "1px solid black",
-          padding: "5px",
-          pointerEvents: "auto",
-        }}
-      >
-        Tab Content
-      </div>
-  
-      <div
         style={{
           position: "relative",
           width: `${overlayWidth}px`,

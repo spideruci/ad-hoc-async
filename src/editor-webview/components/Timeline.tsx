@@ -1,12 +1,64 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { ActionMeta, MultiValue } from "react-select";
 import Select from "react-select";
-import * as Highcharts from "highcharts";
+import Highcharts, { Series } from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 import "highcharts/modules/boost";
-import type { Log } from "../../types/message";
+import type { ConsoleLog, Log } from "../../types/message";
 import { useRange } from "../context-providers/RangeProvider";
 
+(function (H) {
+  // Keep a reference to the original reset function
+  const originalReset = H.Pointer.prototype.reset;
+
+  H.Pointer.prototype.reset = function () {
+    const pointer = this as Highcharts.Pointer & { chart: Highcharts.Chart };
+    if (!pointer.chart.hoverPoint) {
+      originalReset.call(this);
+    }
+  };
+
+  /**
+   * Highlight a point by showing tooltip, setting hover state, and drawing crosshair.
+   */
+  (H.Point.prototype as any).highlight = function (event: any) {
+    const chart = this.series.chart;
+    event = chart.pointer.normalize(event);
+    this.onMouseOver(); // Show hover marker
+    chart.tooltip.refresh(this); // Show tooltip
+    chart.xAxis[0].drawCrosshair(event, this); // Show crosshair
+  };
+
+  const syncHighlight = (e: MouseEvent) => {
+    Highcharts.charts.forEach((chart) => {
+      if (!chart) { return; }
+  
+      const event = chart.pointer.normalize(e as any);
+  
+      // 🔹 First, clear hover state for all points in the chart
+      chart.series.forEach((series) => {
+        series.points.forEach((point) => {
+          if (point.setState) {
+            point.setState(); // Reset hover state
+          }
+        });
+      });
+  
+      // 🔹 Then, find and highlight the closest scatter point
+      chart.series?.forEach((s) => {
+        if (s.type === "scatter") {
+          const point = s.searchPoint(event, true);
+          if (point) {
+            (point as any).highlight(e);
+          }
+        }
+      });
+    });
+  };
+
+  // Attach event listeners
+  document.addEventListener("mousemove", syncHighlight);
+})(Highcharts);
 // --- Types ---
 interface TimelineProps {
   logs: Log[];
@@ -88,6 +140,7 @@ export default function TimelineHighcharts({
 }: TimelineProps): JSX.Element {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null);
+  const [logMapping, setLogMapping] = useState<Record<string, ConsoleLog>>({});
 
   // Range context
   const { range, setRange } = useRange();
@@ -136,7 +189,6 @@ export default function TimelineHighcharts({
           log,
         });
       });
-
     return groupedLogs;
   }, [logs, startLine, endLine]);
 
@@ -169,7 +221,15 @@ export default function TimelineHighcharts({
       };
     });
   }, [startLine, endLine]);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
+  const debouncedSetRange = (min: number, max: number) => {
+    if (debounceRef.current) { clearTimeout(debounceRef.current); }
+    debounceRef.current = setTimeout(() => {
+      setRange([min, max]);
+    }, 300); // Adjust debounce delay as needed
+  };
+  
   // For the dropdown
   const options = useMemo(
     () =>
@@ -188,6 +248,21 @@ export default function TimelineHighcharts({
     setSelectedFunctions(new Set(newValue.map((option) => option.value)));
   };
 
+  useEffect(() => {
+    const newLogMapping: Record<string, ConsoleLog> = {};
+    
+    functionKeys.forEach((key) => {
+      const sortedData = [...chartData[key]].sort((a, b) => a.timestamp - b.timestamp);
+  
+      sortedData.forEach((d, index) => {
+        if (d.log.type === "console.log") {
+          newLogMapping[d.log.logId] = d.log; // Store the log with an ID
+        }
+      });
+    });
+  
+    setLogMapping(newLogMapping);
+  }, [chartData, functionKeys]);
   /**
    * Build 2 series per functionKey:
    * 1) A line series with non-console.log points (no mouse tracking)
@@ -206,7 +281,6 @@ export default function TimelineHighcharts({
           .map((d) => ({
             x: d.timestamp,
             y: d.value,
-            log: d.log,
           }));
 
         // console.log => scatter
@@ -215,7 +289,7 @@ export default function TimelineHighcharts({
           .map((d) => ({
             x: d.timestamp,
             y: d.value,
-            log: d.log,
+            id: d.log.type === "console.log" ? d.log.logId : "",
           }));
 
         return [
@@ -238,32 +312,49 @@ export default function TimelineHighcharts({
               fillColor: "#FF0000",
             },
           },
-        ];
+        ] as Highcharts.SeriesOptionsType[];
       });
   }, [chartData, functionKeys, selectedFunctions]);
-
+  
   // Build final Highcharts config
   const chartOptions: Highcharts.Options = useMemo(() => {
     return {
       boost: {
         enabled: true,
-        useGPUTranslations: true,
-        seriesThreshold: 20,
+        seriesThreshold: 200,
       },
       chart: {
-        spacing: [0,0,0,0],
+        type: "stockChart", // <-- This is important
+        backgroundColor: "#1e1e1e",
         zooming: {
           type: "x",
-          
+        }
+      },
+      rangeSelector: {
+        enabled: false, // Add stock range selector
+      },
+      navigator: {
+        enabled: false, // Enables the navigator for better zoom control
+      },
+      scrollbar: {
+        enabled: false, // Enables scrollbar for smooth scrolling
+      },
+      tooltip: {
+        enabled: true,
+        shared: true,
+        split: false,
+        useHTML: true,
+        followPointer: true, // Ensures tooltip follows mouse
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+        style: { color: "#000" },
+        formatter: function () {
+          if ((this as any).id && logMapping[(this as any).id]) {
+            return "<strong>Log Data:</strong><br/>" +
+              logMapping[(this as any).id].logData.map(d => `${JSON.stringify(d)}<br/>`).join("");
+          }
+          return `<strong>Time:</strong> ${new Date(this.x).toLocaleString()}<br/>
+                  <strong>Line:</strong> ${this.y}`;
         },
-        backgroundColor: "#1e1e1e",
-        // Pan + mouseWheel
-        panning: {
-          enabled: true,
-          followTouchMove: false,
-          type: "x",
-        },
-        panKey: "shift",
       },
       title: { text: undefined },
       xAxis: {
@@ -271,14 +362,14 @@ export default function TimelineHighcharts({
         type: "datetime",
         min: range[0],
         max: range[1],
+        crosshair: {snap: false},
         tickLength: 0,
         lineColor: "#999",
         tickColor: "#999",
         events: {
           setExtremes: function (e) {
-            // only update context if user-driven
             if (e.trigger !== "sync" && e.min !== null && e.max !== null) {
-              setRange([e.min, e.max]);
+              debouncedSetRange(e.min, e.max);
             }
           },
         },
@@ -291,39 +382,16 @@ export default function TimelineHighcharts({
         tickColor: "#999",
         title: { text: "" },
         plotBands: yPlotBands,
-        zoomEnabled: false,
         min: startLine,
         max: endLine,
       },
       legend: { enabled: false },
-      tooltip: {
-        split: true,
-        crosshairs: true,
-        formatter: function () {
-          const log = (this.options as CustomLogPoint).log;
-          if (log?.type && log.type === "console.log") {
-            return `${log.logData.map(d => `${JSON.stringify(d)}<br/>`)}`;
-          } else {
-            return false;
-          }
-        } as Highcharts.TooltipFormatterCallbackFunction,
-        backgroundColor: "#fff",
-        style: { color: "#000" },
-      },
+
       plotOptions: {
         series: {
-          inactiveOtherPoints: true,
-        },
-        line: {
-          boostThreshold: 1,
-          lineWidth: 1,
+          showInNavigator: true, // Enable navigator for each series
           marker: {
-            states: {
-              inactive: {
-                enabled: true,
-                opacity: 0.2,
-              },
-            },
+            enabled: true, // Makes scatter points more visible
           },
         },
       },
@@ -370,6 +438,7 @@ export default function TimelineHighcharts({
       <HighchartsReact
         ref={chartComponentRef}
         highcharts={Highcharts}
+        constructorType={"stockChart"}
         options={chartOptions}
         containerProps={{ style: { height: "100%", width: "100%" } }}
       />
