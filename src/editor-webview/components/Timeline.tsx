@@ -9,79 +9,20 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
 import type { ConsoleLog, Log } from "../../types/message";
 import { useRange } from "../context-providers/RangeProvider";
+import SelectFunctionInvocation from "./SelectFunctionInvocation";
+
+declare module "highcharts" {
+  export function each<T>(
+    arr: Array<T>,
+    fn: (item: T, index: number, arr: Array<T>) => void
+  ): void;
+}
 
 interface TimelineProps {
   logs: Log[];
   startLine: number;
   endLine: number;
 }
-
-// Store each point’s original Log data in Highcharts
-interface CustomLogPoint extends Highcharts.PointOptionsObject {
-  log: Log;
-}
-
-interface SelectFunctionInvocationProps {
-  options: { value: string; label: string }[];
-  selectedFunctions: Set<string>;
-  handleSelectChange: (
-    newValue: MultiValue<{ value: string; label: string }>,
-    actionMeta: ActionMeta<{ value: string; label: string }>
-  ) => void;
-}
-
-// Multi-Select for Functions
-const SelectFunctionInvocation = ({
-  options,
-  selectedFunctions,
-  handleSelectChange,
-}: SelectFunctionInvocationProps) => {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: "-40px",
-        left: "10px",
-        zIndex: 10,
-        display: "flex",
-        gap: "5px",
-        flexWrap: "wrap",
-      }}
-    >
-      <Select
-        isMulti
-        options={options}
-        value={options.filter((option) => selectedFunctions.has(option.value))}
-        closeMenuOnSelect={false}
-        onChange={handleSelectChange}
-        styles={{
-          control: (base) => ({
-            ...base,
-            backgroundColor: "#333",
-            borderColor: "#555",
-            color: "#fff",
-          }),
-          menu: (base) => ({
-            ...base,
-            backgroundColor: "#333",
-            color: "#fff",
-          }),
-          multiValue: (base) => ({
-            ...base,
-            backgroundColor: "#555",
-            color: "#fff",
-          }),
-          multiValueLabel: (base) => ({ ...base, color: "#fff" }),
-          multiValueRemove: (base) => ({
-            ...base,
-            color: "#fff",
-            ":hover": { backgroundColor: "#777", color: "#fff" },
-          }),
-        }}
-      />
-    </div>
-  );
-};
 
 export default function TimelineHighcharts({
   logs,
@@ -90,7 +31,6 @@ export default function TimelineHighcharts({
 }: TimelineProps): JSX.Element {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null);
-  const [logMapping, setLogMapping] = useState<Record<string, ConsoleLog>>({});
   const [isRuntimeContext, setIsRuntimeContext] = React.useState(false);
   const handleChange = (event: React.MouseEvent<HTMLElement>, runtimeContext: boolean) => {
     setIsRuntimeContext(runtimeContext);
@@ -98,52 +38,40 @@ export default function TimelineHighcharts({
   // Range context
   const { range, setRange } = useRange();
 
-  // Map functionName->functionKey->(label index)
   const functionKeyMapping = useMemo(() => {
     const mapping: Record<string, Record<string, number>> = {};
     const counters: Record<string, number> = {};
 
-    const sortedLogs = [...logs].sort((a, b) => a.timestamp - b.timestamp);
-
-    sortedLogs
-      .filter((log) => log.lineNumber >= startLine && log.lineNumber <= endLine)
-      .forEach((log) => {
+    logs.forEach((log) => {
+      if (log.lineNumber >= startLine && log.lineNumber <= endLine) {
         if (!mapping[log.functionName]) {
           mapping[log.functionName] = {};
           counters[log.functionName] = 1;
         }
         if (!mapping[log.functionName][log.functionKey]) {
-          mapping[log.functionName][log.functionKey] =
-            counters[log.functionName];
-          counters[log.functionName] += 1;
+          mapping[log.functionName][log.functionKey] = counters[log.functionName]++;
         }
-      });
+      }
+    });
 
     return mapping;
   }, [logs, startLine, endLine]);
-
   // Group logs by function key
   const chartData = useMemo(() => {
-    const groupedLogs: Record<
-      string,
-      { timestamp: number; value: number; log: Log }[]
-    > = {};
-
-    logs
-      .filter((log) => log.lineNumber >= startLine && log.lineNumber <= endLine)
-      .forEach((log) => {
+    return logs.reduce((acc, log) => {
+      if (log.lineNumber >= startLine && log.lineNumber <= endLine) {
         const key = `${log.functionName}::-::${log.functionKey}`;
-        if (!groupedLogs[key]) {
-          groupedLogs[key] = [];
-        }
-        groupedLogs[key].push({
-          timestamp: new Date(log.timestamp).getTime(),
+        acc[key] = acc[key] || [];
+        acc[key].push({
+          timestamp: log.timestamp,
           value: log.lineNumber,
           log,
         });
-      });
-    return groupedLogs;
+      }
+      return acc;
+    }, {} as Record<string, { timestamp: number; value: number; log: Log }[]>);
   }, [logs, startLine, endLine]);
+
 
   // All possible function keys
   const functionKeys = useMemo(() => Object.keys(chartData), [chartData]);
@@ -153,12 +81,16 @@ export default function TimelineHighcharts({
     new Set(functionKeys)
   );
   useEffect(() => {
-    setSelectedFunctions(new Set(functionKeys));
+    setSelectedFunctions((prev) => {
+      const newSelection = new Set(prev);
+      functionKeys.forEach((key) => newSelection.add(key)); // Add new keys but keep existing selections
+      return newSelection;
+    });
   }, [functionKeys]);
 
   const yPlotBands = useMemo(() => {
     if (!startLine || !endLine) { return []; }
-  
+
     return Array.from({ length: endLine - startLine + 1 }, (_, i) => {
       const yValue = startLine + i;
       return {
@@ -174,15 +106,8 @@ export default function TimelineHighcharts({
       };
     });
   }, [startLine, endLine]);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const debouncedSetRange = (min: number, max: number) => {
-    if (debounceRef.current) { clearTimeout(debounceRef.current); }
-    debounceRef.current = setTimeout(() => {
-      setRange([min, max]);
-    }, 300); // Adjust debounce delay as needed
-  };
-  
+
   // For the dropdown
   const options = useMemo(
     () =>
@@ -200,43 +125,34 @@ export default function TimelineHighcharts({
   ) => {
     setSelectedFunctions(new Set(newValue.map((option) => option.value)));
   };
-
-  useEffect(() => {
-    const newLogMapping: Record<string, ConsoleLog> = {};
-    
+  const logMapping = useMemo(() => {
+    const mapping: Record<string, ConsoleLog> = {};
     functionKeys.forEach((key) => {
-      const sortedData = [...chartData[key]].sort((a, b) => a.timestamp - b.timestamp);
-  
-      sortedData.forEach((d, index) => {
+      chartData[key].forEach((d) => {
         if (d.log.type === "console.log") {
-          newLogMapping[d.log.logId] = d.log; // Store the log with an ID
+          mapping[d.log.logId] = d.log;
         }
       });
     });
-  
-    setLogMapping(newLogMapping);
+    return mapping;
   }, [chartData, functionKeys]);
-  /**
-   * Build 2 series per functionKey:
-   * 1) A line series with non-console.log points (no mouse tracking)
-   * 2) A scatter series with console.log points (mouse tracking enabled)
-   */
-  const series = useMemo(() => {
-    return functionKeys
-      .filter((key) => selectedFunctions.has(key))
-      .flatMap((key) => {
-        const sortedData = [...chartData[key]].sort(
-          (a, b) => a.timestamp - b.timestamp
-        );
-        // Non-console.log => line
-        const lineData = isRuntimeContext ? sortedData
-          .filter((d) => d.log.type !== "console.log")
-          .map((d) => ({
-            x: d.timestamp,
-            y: d.value,
-          })) : [];
 
-        // console.log => scatter
+  useEffect(() => {
+    if (chartComponentRef.current) {
+      const chart = chartComponentRef.current.chart;
+
+      functionKeys.forEach((key) => {
+        // Find existing series in Highcharts
+        const lineSeries = chart.series.find((s) => s.name === `${key}-line`);
+        const scatterSeries = chart.series.find((s) => s.name === `${key}-scatter`);
+
+        const sortedData = [...chartData[key]].sort((a, b) => a.timestamp - b.timestamp);
+
+        const lineData = isRuntimeContext
+          ? sortedData.filter((d) => d.log.type !== "console.log")
+            .map((d) => [d.timestamp, d.value])
+          : [];
+
         const scatterData = sortedData
           .filter((d) => d.log.type === "console.log")
           .map((d) => ({
@@ -245,53 +161,69 @@ export default function TimelineHighcharts({
             id: d.log.type === "console.log" ? d.log.logId : "",
           }));
 
-        return [
-          {
-            name: `${key}-line`,
-            type: "line" as const,
-            step: "left" as const,
-            data: lineData,
-            marker: { symbol: "rectangle", radius: 3, fillColor: "white" },
-            enableMouseTracking: false, // no hover or tooltips for non-console logs
-          },
-          {
-            name: `${key}-scatter`,
-            type: "scatter" as const,
-            data: scatterData,
-            enableMouseTracking: isRuntimeContext, // Disable tooltip when showing text labels
-            marker: {
-              symbol: "circle",
-              radius: 3,
-              fillColor: "#FF0000",
+        // **Update existing series or create new ones**
+        if (lineSeries) {
+          lineSeries.setData(lineData, false);
+        } else {
+          chart.addSeries(
+            {
+              name: `${key}-line`,
+              type: "line",
+              step: "left",
+              data: lineData,
+              marker: { symbol: "rectangle", radius: 3, fillColor: "white" },
+              enableMouseTracking: false,
             },
-            dataLabels: {
-              enabled: !isRuntimeContext, // Show logs when isRuntimeContext is true
-              useHTML: true,
-              align: "left",
-              verticalAlign: "middle",
-              style: {
-                fontSize: "10px",
-                color: "#fff",
-                backgroundColor: "rgba(0, 0, 0, 0.75)",
-                padding: "2px 4px",
-                borderRadius: "3px",
-              },
-              formatter: function () {
-                if ((this as any).id && logMapping[(this as any).id]) {
-                  const logOutput = logMapping[(this as any).id].logData
-                    .map(d => JSON.stringify(d))
-                    .join(" ");
-                  
-                  return logOutput.length > 100 ? `${logOutput.substring(0, 100)}...` : logOutput;
-                }
-                return "";
+            false
+          );
+        }
+
+        if (scatterSeries) {
+          scatterSeries.setData(scatterData, false);
+        } else {
+          chart.addSeries(
+            {
+              name: `${key}-scatter`,
+              type: "scatter",
+              data: scatterData,
+              marker: { symbol: "circle", radius: 3, fillColor: "#FF0000" },
+              enableMouseTracking: isRuntimeContext,
+              dataLabels: {
+                enabled: !isRuntimeContext, // Show logs only when `isRuntimeContext` is false
+                align: "left",
+                verticalAlign: "middle",
+                formatter: function () {
+                  if ((this as any).id && logMapping[(this as any).id]) {
+                    const logOutput = logMapping[(this as any).id].logData
+                      .map(d => JSON.stringify(d))
+                      .join(" ");
+                    return logOutput.length > 100 ? `${logOutput.substring(0, 100)}...` : logOutput;
+                  }
+                  return "";
+                },
               },
             },
-          },
-        ] as Highcharts.SeriesOptionsType[];
+            false
+          );
+        }
+        if (scatterSeries) {
+          scatterSeries.update(
+            {
+              enableMouseTracking: isRuntimeContext,
+              dataLabels: {
+                enabled: !isRuntimeContext, // ✅ Ensure labels update dynamically
+              },
+              type: "scatter"
+            },
+            false
+          );
+        }
       });
-  }, [chartData, functionKeys, selectedFunctions, isRuntimeContext]);
-  
+
+      chart.redraw(); // Apply updates without full re-render
+    }
+  }, [chartData, functionKeys, isRuntimeContext, logMapping]);
+
   // Build final Highcharts config
   const chartOptions: Highcharts.Options = useMemo(() => {
     return {
@@ -300,18 +232,15 @@ export default function TimelineHighcharts({
         seriesThreshold: 200,
       },
       chart: {
-        spacing: [0,0,0,0],
+        spacing: [0, 0, 0, 0],
         type: "stockChart", // <-- This is important
         backgroundColor: "#1e1e1e",
         zooming: {
-          mouseWheel: {
-            enabled: false
-          }
+          type: "x"
         },
-        panKey: "shift",
         panning: {
           enabled: true,
-          type: "x",
+          type: "x"
         }
       },
       rangeSelector: {
@@ -344,19 +273,32 @@ export default function TimelineHighcharts({
       xAxis: {
         visible: false,
         type: "datetime",
+        crosshair: { snap: false },
+        tickLength: 0,
         min: range[0],
         max: range[1],
-        crosshair: {snap: false},
-        tickLength: 0,
         lineColor: "#999",
         tickColor: "#999",
         events: {
           setExtremes: function (e) {
-            if (e.trigger !== "sync" && e.min !== null && e.max !== null) {
-              debouncedSetRange(e.min, e.max);
+            if (e.trigger !== "syncExtremes") { // Prevent feedback loop
+              const thisChart = this.chart;
+              Highcharts.charts.forEach(function (chart) {
+                if (chart !== thisChart) {
+                  if (chart && chart.xAxis[0].setExtremes !== null) {
+                    chart.xAxis[0].setExtremes(
+                      e.min,
+                      e.max,
+                      undefined,
+                      false,
+                      { trigger: "syncExtremes" }
+                    );
+                  }
+                }
+              });
             }
-          },
-        },
+          }
+        }
       },
       yAxis: {
         reversed: true,
@@ -380,26 +322,9 @@ export default function TimelineHighcharts({
         },
       },
       credits: { enabled: false },
-      series: series as Highcharts.SeriesOptionsType[],
     };
-  }, [range, series, setRange, yPlotBands]);
+  }, [range, setRange, yPlotBands]);
 
-  // Keep chart in sync if external range changes
-  useEffect(() => {
-    const chartObj = chartComponentRef.current?.chart;
-    if (!chartObj) {
-      return;
-    }
-
-    const currentMin = chartObj.xAxis[0].min;
-    const currentMax = chartObj.xAxis[0].max;
-
-    if (currentMin !== range[0] || currentMax !== range[1]) {
-      chartObj.xAxis[0].setExtremes(range[0], range[1], true, true, {
-        trigger: "sync",
-      });
-    }
-  }, [range]);
 
   return (
     <div
@@ -424,7 +349,7 @@ export default function TimelineHighcharts({
         color="primary"
         value={isRuntimeContext}
         exclusive
-        style={{position: "absolute", left: "-40px"}}
+        style={{ position: "absolute", left: "-40px" }}
         onChange={handleChange}
         aria-label="Platform"
       >
@@ -434,7 +359,7 @@ export default function TimelineHighcharts({
       <HighchartsReact
         ref={chartComponentRef}
         highcharts={Highcharts}
-        allowChartUpdate = { true }
+        allowChartUpdate={true}
         constructorType={"stockChart"}
         options={chartOptions}
         containerProps={{ style: { height: "100%", width: "100%" } }}
