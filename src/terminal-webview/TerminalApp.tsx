@@ -1,9 +1,9 @@
 import { type ReactElement } from "react";
 import { useState, useCallback, useEffect } from "react";
-import type { Log, ToEditorMessage, ToVSCodeMessage, VSCodeState } from "../types/message";
 import List from "@mui/material/List";
-import ListItemText from '@mui/material/ListItemText';
-import ListItem from '@mui/material/ListItem';
+import ListItemText from "@mui/material/ListItemText";
+import ListItem from "@mui/material/ListItem";
+import type { Log, ToEditorMessage, ToVSCodeMessage, VSCodeState } from "../types/message";
 
 const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
