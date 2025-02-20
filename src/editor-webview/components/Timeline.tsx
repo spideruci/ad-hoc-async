@@ -187,7 +187,6 @@ export default function TimelineHighcharts({
               type: "scatter",
               data: scatterData,
               marker: { symbol: "circle", radius: 3, fillColor: "#FF0000" },
-              enableMouseTracking: isRuntimeContext,
               dataLabels: {
                 enabled: !isRuntimeContext, // Show logs only when `isRuntimeContext` is false
                 align: "left",
@@ -209,7 +208,6 @@ export default function TimelineHighcharts({
         if (scatterSeries) {
           scatterSeries.update(
             {
-              enableMouseTracking: isRuntimeContext,
               dataLabels: {
                 enabled: !isRuntimeContext, // ✅ Ensure labels update dynamically
               },
@@ -272,13 +270,17 @@ export default function TimelineHighcharts({
       title: { text: undefined },
       xAxis: {
         visible: false,
-        type: "datetime",
+        type: "linear",
         crosshair: { snap: false },
         tickLength: 0,
         min: range[0],
+        startOnTick: false,
+        ordinal: false,
+        endOnTick: false,
         max: range[1],
-        lineColor: "#999",
-        tickColor: "#999",
+        tickAmount: 10,
+        lineColor: "#FFFFFF",
+        tickColor: "#FFFFFF",
         events: {
           setExtremes: function (e) {
             if (e.trigger !== "syncExtremes") { // Prevent feedback loop

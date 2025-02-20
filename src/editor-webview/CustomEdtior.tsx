@@ -134,7 +134,7 @@ const CustomEditor: React.FC = () => {
       const maxTimestamp = Math.max(...timestamps);
       const minTimestamp = Math.min(...timestamps);
 
-      const initialRange: [number, number] = [minTimestamp - 1000, maxTimestamp + 2000];
+      const initialRange: [number, number] = [minTimestamp - 100, maxTimestamp + 100];
       setRange(initialRange);
     }
   }, [logs, setRange]);
