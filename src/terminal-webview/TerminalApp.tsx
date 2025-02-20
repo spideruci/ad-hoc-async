@@ -1,6 +1,9 @@
 import { type ReactElement } from "react";
 import { useState, useCallback, useEffect } from "react";
 import type { Log, ToEditorMessage, ToVSCodeMessage, VSCodeState } from "../types/message";
+import List from "@mui/material/List";
+import ListItemText from '@mui/material/ListItemText';
+import ListItem from '@mui/material/ListItem';
 
 const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
@@ -26,13 +29,20 @@ const TerminalApp = (): ReactElement => {
   return (
     <div>
       <h1>Terminal Sidebar</h1>
-      {logs.filter((log) => log.type === "console.log").map((log, index) => (
-        <div key={`log-${index}`}>
-          {log.logData.map(data => {
-            return <p>{String(data)}</p>;
-          })}
-        </div>
-      ))}
+      <List sx={{ width: "100%", maxWidth: 360, bgcolor: "background.paper" }}>
+        {logs.filter((log) => log.type === "console.log").map((log, index) => (
+          <ListItem alignItems="flex-start" key={`log-${index}`}>
+            <ListItemText
+              primary={log.logData.map(data => {
+                return JSON.stringify(data);
+              })}
+              secondary={
+                log.functionName
+              }
+            />
+          </ListItem>
+        ))}
+      </List>
     </div>
   );
 };

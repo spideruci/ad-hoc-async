@@ -4,62 +4,12 @@ import Select from "react-select";
 import Highcharts, { Series } from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 import "highcharts/modules/boost";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+
 import type { ConsoleLog, Log } from "../../types/message";
 import { useRange } from "../context-providers/RangeProvider";
 
-(function (H) {
-  // Keep a reference to the original reset function
-  const originalReset = H.Pointer.prototype.reset;
-
-  H.Pointer.prototype.reset = function () {
-    const pointer = this as Highcharts.Pointer & { chart: Highcharts.Chart };
-    if (!pointer.chart.hoverPoint) {
-      originalReset.call(this);
-    }
-  };
-
-  /**
-   * Highlight a point by showing tooltip, setting hover state, and drawing crosshair.
-   */
-  (H.Point.prototype as any).highlight = function (event: any) {
-    const chart = this.series.chart;
-    event = chart.pointer.normalize(event);
-    this.onMouseOver(); // Show hover marker
-    chart.tooltip.refresh(this); // Show tooltip
-    chart.xAxis[0].drawCrosshair(event, this); // Show crosshair
-  };
-
-  const syncHighlight = (e: MouseEvent) => {
-    Highcharts.charts.forEach((chart) => {
-      if (!chart) { return; }
-  
-      const event = chart.pointer.normalize(e as any);
-  
-      // 🔹 First, clear hover state for all points in the chart
-      chart.series.forEach((series) => {
-        series.points.forEach((point) => {
-          if (point.setState) {
-            point.setState(); // Reset hover state
-          }
-        });
-      });
-  
-      // 🔹 Then, find and highlight the closest scatter point
-      chart.series?.forEach((s) => {
-        if (s.type === "scatter") {
-          const point = s.searchPoint(event, true);
-          if (point) {
-            (point as any).highlight(e);
-          }
-        }
-      });
-    });
-  };
-
-  // Attach event listeners
-  document.addEventListener("mousemove", syncHighlight);
-})(Highcharts);
-// --- Types ---
 interface TimelineProps {
   logs: Log[];
   startLine: number;
@@ -141,7 +91,10 @@ export default function TimelineHighcharts({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null);
   const [logMapping, setLogMapping] = useState<Record<string, ConsoleLog>>({});
-
+  const [isRuntimeContext, setIsRuntimeContext] = React.useState(false);
+  const handleChange = (event: React.MouseEvent<HTMLElement>, runtimeContext: boolean) => {
+    setIsRuntimeContext(runtimeContext);
+  };
   // Range context
   const { range, setRange } = useRange();
 
@@ -276,12 +229,12 @@ export default function TimelineHighcharts({
           (a, b) => a.timestamp - b.timestamp
         );
         // Non-console.log => line
-        const lineData = sortedData
+        const lineData = isRuntimeContext ? sortedData
           .filter((d) => d.log.type !== "console.log")
           .map((d) => ({
             x: d.timestamp,
             y: d.value,
-          }));
+          })) : [];
 
         // console.log => scatter
         const scatterData = sortedData
@@ -298,23 +251,46 @@ export default function TimelineHighcharts({
             type: "line" as const,
             step: "left" as const,
             data: lineData,
-            marker: { enabled: false },
+            marker: { symbol: "rectangle", radius: 3, fillColor: "white" },
             enableMouseTracking: false, // no hover or tooltips for non-console logs
           },
           {
             name: `${key}-scatter`,
             type: "scatter" as const,
             data: scatterData,
-            enableMouseTracking: true, // default anyway, but explicit
+            enableMouseTracking: isRuntimeContext, // Disable tooltip when showing text labels
             marker: {
               symbol: "circle",
               radius: 3,
               fillColor: "#FF0000",
             },
+            dataLabels: {
+              enabled: !isRuntimeContext, // Show logs when isRuntimeContext is true
+              useHTML: true,
+              align: "left",
+              verticalAlign: "middle",
+              style: {
+                fontSize: "10px",
+                color: "#fff",
+                backgroundColor: "rgba(0, 0, 0, 0.75)",
+                padding: "2px 4px",
+                borderRadius: "3px",
+              },
+              formatter: function () {
+                if ((this as any).id && logMapping[(this as any).id]) {
+                  const logOutput = logMapping[(this as any).id].logData
+                    .map(d => JSON.stringify(d))
+                    .join(" ");
+                  
+                  return logOutput.length > 100 ? `${logOutput.substring(0, 100)}...` : logOutput;
+                }
+                return "";
+              },
+            },
           },
         ] as Highcharts.SeriesOptionsType[];
       });
-  }, [chartData, functionKeys, selectedFunctions]);
+  }, [chartData, functionKeys, selectedFunctions, isRuntimeContext]);
   
   // Build final Highcharts config
   const chartOptions: Highcharts.Options = useMemo(() => {
@@ -324,9 +300,17 @@ export default function TimelineHighcharts({
         seriesThreshold: 200,
       },
       chart: {
+        spacing: [0,0,0,0],
         type: "stockChart", // <-- This is important
         backgroundColor: "#1e1e1e",
         zooming: {
+          mouseWheel: {
+            enabled: false
+          }
+        },
+        panKey: "shift",
+        panning: {
+          enabled: true,
           type: "x",
         }
       },
@@ -411,7 +395,7 @@ export default function TimelineHighcharts({
     const currentMax = chartObj.xAxis[0].max;
 
     if (currentMin !== range[0] || currentMax !== range[1]) {
-      chartObj.xAxis[0].setExtremes(range[0], range[1], true, false, {
+      chartObj.xAxis[0].setExtremes(range[0], range[1], true, true, {
         trigger: "sync",
       });
     }
@@ -434,10 +418,23 @@ export default function TimelineHighcharts({
         selectedFunctions={selectedFunctions}
         handleSelectChange={handleSelectChange}
       />
-
+      <ToggleButtonGroup
+        size="small"
+        orientation="vertical"
+        color="primary"
+        value={isRuntimeContext}
+        exclusive
+        style={{position: "absolute", left: "-40px"}}
+        onChange={handleChange}
+        aria-label="Platform"
+      >
+        <ToggleButton value={false}>Line</ToggleButton>
+        <ToggleButton value={true}>Log</ToggleButton>
+      </ToggleButtonGroup>
       <HighchartsReact
         ref={chartComponentRef}
         highcharts={Highcharts}
+        allowChartUpdate = { true }
         constructorType={"stockChart"}
         options={chartOptions}
         containerProps={{ style: { height: "100%", width: "100%" } }}
