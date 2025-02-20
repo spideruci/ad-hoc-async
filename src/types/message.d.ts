@@ -25,7 +25,16 @@ export type ToEditorMessage = {
     language: string;
 };
 
-
+export type ConsoleLog = {
+    filename: string;
+    functionName: string;
+    lineNumber: number;
+    timestamp: number;
+    functionKey: number;
+    logData: never[];
+    logId: string;
+    type: "console.log";
+};
 export type Log = {
     filename: string;
     functionName: string;
@@ -33,15 +42,7 @@ export type Log = {
     timestamp: number;
     functionKey: number;
     type: "statement";
-} | {
-    filename: string;
-    functionName: string;
-    lineNumber: number;
-    timestamp: number;
-    functionKey: number;
-    logData: never[];
-    type: "console.log";
-} | {
+} | ConsoleLog | {
     type: "branch";
     filename: string;
     functionName: string;

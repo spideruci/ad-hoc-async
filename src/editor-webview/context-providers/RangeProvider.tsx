@@ -4,18 +4,15 @@ import React, { createContext, useContext, useState } from "react";
 interface RangeContextProps {
   range: [number, number];
   setRange: React.Dispatch<React.SetStateAction<[number, number]>>;
-  originalRange: [number, number];
-  setOriginalRange: React.Dispatch<React.SetStateAction<[number, number]>>;
 }
 
 const RangeContext = createContext<RangeContextProps | undefined>(undefined);
 
 export const RangeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [range, setRange] = useState<[number, number]>([0, 0]);
-  const [originalRange, setOriginalRange] = useState<[number, number]>([0, 0]);
 
   return (
-    <RangeContext.Provider value={{ range, setRange, originalRange, setOriginalRange }}>
+    <RangeContext.Provider value={{ range, setRange }}>
       {children}
     </RangeContext.Provider>
   );

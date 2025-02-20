@@ -19,16 +19,14 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   const [scrollTop, setScrollTop] = useState<number>(editor.getScrollTop());
   const [scrollLeft, setScrollLeft] = useState<number>(editor.getScrollLeft());
   const [overlayStyle, setOverlayStyle] = useState<React.CSSProperties>({});
-  const [isHovered, setIsHovered] = useState<boolean>(false);
-  const [hoverProvider, setHoverProvider] =
-    useState<monacoNamespace.IDisposable | null>(null);
   const [cachedLeft, setCachedLeft] = useState<number | null>(null);
   const { overlayWidth, setOverlayWidth } = useOverlayWidth();
   const draggerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef<boolean>(false);
   const initialMouseX = useRef<number>(0);
   const initialWidth = useRef<number>(overlayWidth);
-
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   function getMonacoContentWidth(
     editor: monacoNamespace.editor.IStandaloneCodeEditor
   ): number {
@@ -45,15 +43,33 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
     return totalWidth;
   }
 
+
   useEffect(() => {
     const handleScroll = (): void => {
+      if (!isScrolling) {
+        setIsScrolling(true); // Hide overlay only when scrolling starts
+      }
       setScrollTop(editor.getScrollTop()); // Update scroll position
-      setScrollLeft(editor.getScrollLeft()); // Update scroll position
+      setScrollLeft(editor.getScrollLeft());
+      // Clear any existing timeout to avoid flickering
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+  
+      // Set a new timeout to show the overlay after scrolling stops
+      scrollTimeout.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 200); // Adjust delay as needed
     };
-
-    const disposable = editor.onDidScrollChange(handleScroll); // Listen for scroll changes
-
-    return (): void => disposable.dispose(); // Cleanup on unmount
+  
+    const disposable = editor.onDidScrollChange(handleScroll);
+  
+    return (): void => {
+      disposable.dispose();
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
   }, [editor]);
 
   useEffect(() => {
@@ -100,28 +116,6 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
     calculateOverlayStyle();
   }, [startLine, endLine, editor, scrollTop, scrollLeft, cachedLeft]);
 
-  useEffect(() => {
-    if (hoverProvider) {
-      hoverProvider.dispose();
-    }
-    const handleMouseMove = (
-      e: monacoNamespace.editor.IEditorMouseEvent
-    ): void => {
-      const position = e.target.position;
-      const isHover =
-        (position &&
-          position.lineNumber >= startLine &&
-          position.lineNumber <= endLine) ||
-        false;
-      setIsHovered(isHover);
-    };
-    const newHoverProvider = editor.onMouseMove(handleMouseMove);
-    setHoverProvider(newHoverProvider);
-    return (): void => {
-      newHoverProvider.dispose();
-    };
-  }, [editor, startLine, endLine]);
-
   const handleMouseDown = (e: React.MouseEvent): void => {
     isDragging.current = true;
     initialMouseX.current = e.clientX;
@@ -151,23 +145,14 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   }, []);
 
   return (
-    <div className="overlay-box" style={overlayStyle}>
-      <div
-        className="overlay-tab"
-        style={{
-          display: isHovered ? "block" : "none", // Show only when hovered;
-          position: "absolute",
-          top: "-30px" /* Adjust this value to position the tab above the box */,
-          left: 0,
-          backgroundColor: "white",
-          border: "1px solid black",
-          padding: "5px",
-          pointerEvents: "auto",
-        }}
-      >
-        Tab Content
-      </div>
-
+    <div
+      className="overlay-box"
+      style={{
+        ...overlayStyle,
+        opacity: isScrolling ? 0 : 1, // Smoothly fade in/out instead of blinking
+        transition: "opacity 0.2s ease-in-out", // Adds a transition effect
+      }}
+    >
       <div
         style={{
           position: "relative",
@@ -190,11 +175,7 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
             zIndex: 10,
           }}
         />
-        <Timeline
-          logs={logs}
-          startLine={startLine}
-          endLine={endLine}
-        />
+        <Timeline logs={logs} startLine={startLine} endLine={endLine} />
       </div>
     </div>
   );

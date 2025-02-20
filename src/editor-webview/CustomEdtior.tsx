@@ -36,7 +36,7 @@ const CustomEditor: React.FC = () => {
     }[]
   >([]);
   const [logs, setLogs] = useState<Log[]>([]);
-  const { setRange, setOriginalRange } = useRange();
+  const { setRange } = useRange();
 
   const handleMessage = useCallback(
     (event: MessageEvent<ToEditorMessage>) => {
@@ -131,13 +131,13 @@ const CustomEditor: React.FC = () => {
   useEffect(() => {
     if (logs.length > 0) {
       const timestamps = logs.map(log => new Date(log.timestamp).getTime());
-      const minTimestamp = Math.min(...timestamps);
       const maxTimestamp = Math.max(...timestamps);
-      const initialRange: [number, number] = [minTimestamp - 1000, maxTimestamp + 1000];
+      const minTimestamp = Math.min(...timestamps);
+
+      const initialRange: [number, number] = [minTimestamp - 100, maxTimestamp + 100];
       setRange(initialRange);
-      setOriginalRange(initialRange); // Set the original range
     }
-  }, [logs, setRange, setOriginalRange]);
+  }, [logs, setRange]);
 
   return (
     <div style={{ height: "100vh", width: "100%", position: "relative" }}>
