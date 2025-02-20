@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { ActionMeta, MultiValue } from "react-select";
-import Highcharts, { Series } from "highcharts/highstock";
+import Highcharts from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 import "highcharts/modules/boost";
 import ToggleButton from "@mui/material/ToggleButton";
@@ -121,7 +121,7 @@ export default function TimelineHighcharts({
   const handleSelectChange = (
     newValue: MultiValue<{ value: string; label: string }>,
     _actionMeta: ActionMeta<{ value: string; label: string }>
-  ) => {
+  ): void => {
     setSelectedFunctions(new Set(newValue.map((option) => option.value)));
   };
   const logMapping = useMemo(() => {
