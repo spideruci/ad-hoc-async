@@ -15,7 +15,7 @@ const SelectFunctionInvocation = ({
   options,
   selectedFunctions,
   handleSelectChange,
-}: SelectFunctionInvocationProps) => {
+}: SelectFunctionInvocationProps): JSX.Element => {
   return (
     <div
       style={{

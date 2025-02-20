@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { ActionMeta, MultiValue } from "react-select";
-import Select from "react-select";
 import Highcharts, { Series } from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 import "highcharts/modules/boost";
@@ -32,7 +31,7 @@ export default function TimelineHighcharts({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null);
   const [isRuntimeContext, setIsRuntimeContext] = React.useState(false);
-  const handleChange = (event: React.MouseEvent<HTMLElement>, runtimeContext: boolean) => {
+  const handleChange = (event: React.MouseEvent<HTMLElement>, runtimeContext: boolean): void => {
     setIsRuntimeContext(runtimeContext);
   };
   // Range context
@@ -258,7 +257,7 @@ export default function TimelineHighcharts({
         followPointer: true, // Ensures tooltip follows mouse
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         style: { color: "#000" },
-        formatter: function () {
+        formatter: function (): string {
           if ((this as any).id && logMapping[(this as any).id]) {
             return "<strong>Log Data:</strong><br/>" +
               logMapping[(this as any).id].logData.map(d => `${JSON.stringify(d)}<br/>`).join("");
@@ -282,7 +281,7 @@ export default function TimelineHighcharts({
         lineColor: "#FFFFFF",
         tickColor: "#FFFFFF",
         events: {
-          setExtremes: function (e) {
+          setExtremes: function (e): void {
             if (e.trigger !== "syncExtremes") { // Prevent feedback loop
               const thisChart = this.chart;
               Highcharts.charts.forEach(function (chart) {

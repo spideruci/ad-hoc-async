@@ -45,7 +45,7 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
 
 
   useEffect(() => {
-    const handleScroll = () => {
+    const handleScroll = (): void => {
       if (!isScrolling) {
         setIsScrolling(true); // Hide overlay only when scrolling starts
       }
@@ -64,7 +64,7 @@ const FunctionOverlay: React.FC<FunctionOverlayProps> = (
   
     const disposable = editor.onDidScrollChange(handleScroll);
   
-    return () => {
+    return (): void => {
       disposable.dispose();
       if (scrollTimeout.current) {
         clearTimeout(scrollTimeout.current);
