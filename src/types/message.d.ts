@@ -35,7 +35,7 @@ export type ConsoleLog = {
     logId: string;
     type: "console.log";
 };
-export type Log = {
+export type Log = ({
     filename: string;
     functionName: string;
     lineNumber: number;
@@ -51,4 +51,14 @@ export type Log = {
     timestamp: number;
     branchType: string;
     condition: string;
+} | {
+    type: "functionStart" | "functionEnd";
+    filename: string;
+    functionName: string;
+    functionKey: number;
+    lineNumber: number;
+    functionUUID: string;
+    timestamp: number;
+}) & {
+    programUUID: string;
 };

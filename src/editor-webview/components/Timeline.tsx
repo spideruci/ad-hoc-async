@@ -230,10 +230,12 @@ export default function TimelineHighcharts({
         );
         // Non-console.log => line
         const lineData = isRuntimeContext ? sortedData
-          .filter((d) => d.log.type !== "console.log")
           .map((d) => ({
             x: d.timestamp,
             y: d.value,
+            marker: d.log.type === "functionStart" || d.log.type === "functionEnd"? 
+              { symbol: "triangle", radius: 3, fillColor: "yellow" } :
+              { symbol: "rectangle", radius: 3, fillColor: "white" },
           })) : [];
 
         // console.log => scatter
@@ -251,7 +253,6 @@ export default function TimelineHighcharts({
             type: "line" as const,
             step: "left" as const,
             data: lineData,
-            marker: { symbol: "rectangle", radius: 3, fillColor: "white" },
             enableMouseTracking: false, // no hover or tooltips for non-console logs
           },
           {
