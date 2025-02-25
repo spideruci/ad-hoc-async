@@ -302,6 +302,7 @@ export default function TimelineHighcharts({
         }
       },
       yAxis: {
+        ordinal: false,
         reversed: true,
         tickLength: 0,
         lineColor: "#999",
@@ -311,6 +312,8 @@ export default function TimelineHighcharts({
         plotBands: yPlotBands,
         min: startLine,
         max: endLine,
+        endOnTick: false,
+        startOnTick: false,
       },
       legend: { enabled: false },
 
@@ -324,8 +327,7 @@ export default function TimelineHighcharts({
       },
       credits: { enabled: false },
     };
-  }, [range, setRange, yPlotBands]);
-
+  }, [range, setRange, yPlotBands, startLine, endLine]);
 
   return (
     <div
