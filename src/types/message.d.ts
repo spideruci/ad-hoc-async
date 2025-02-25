@@ -35,20 +35,16 @@ export type ConsoleLog = {
     logId: string;
     type: "console.log";
 };
-export type Log = {
-    filename: string;
-    functionName: string;
-    lineNumber: number;
-    timestamp: number;
-    functionKey: number;
+export type Log = ({
     type: "statement";
 } | ConsoleLog | {
     type: "branch";
-    filename: string;
-    functionName: string;
-    functionKey: number;
-    lineNumber: number;
-    timestamp: number;
     branchType: string;
     condition: string;
+} | {type: "functionStart" | "functionEnd"}) & {   
+    lineNumber: number;
+    functionKey: number;
+    timestamp: number;
+    filename: string;
+    functionName: string;
 };
