@@ -31,7 +31,10 @@ export default function TimelineHighcharts({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null);
   const [isRuntimeContext, setIsRuntimeContext] = React.useState(false);
-  const handleChange = (event: React.MouseEvent<HTMLElement>, runtimeContext: boolean): void => {
+  const handleChange = (
+    event: React.MouseEvent<HTMLElement>,
+    runtimeContext: boolean
+  ): void => {
     setIsRuntimeContext(runtimeContext);
   };
   // Range context
@@ -48,7 +51,9 @@ export default function TimelineHighcharts({
           counters[log.functionName] = 1;
         }
         if (!mapping[log.functionName][log.functionKey]) {
-          mapping[log.functionName][log.functionKey] = counters[log.functionName]++;
+          mapping[log.functionName][log.functionKey] = counters[
+            log.functionName
+          ]++;
         }
       }
     });
@@ -71,14 +76,13 @@ export default function TimelineHighcharts({
     }, {} as Record<string, { timestamp: number; value: number; log: Log }[]>);
   }, [logs, startLine, endLine]);
 
-
   // All possible function keys
   const functionKeys = useMemo(() => Object.keys(chartData), [chartData]);
 
-  // Multi-select (defaults to all selected)
   const [selectedFunctions, setSelectedFunctions] = useState(
     new Set(functionKeys)
   );
+
   useEffect(() => {
     setSelectedFunctions((prev) => {
       const newSelection = new Set(prev);
@@ -88,14 +92,17 @@ export default function TimelineHighcharts({
   }, [functionKeys]);
 
   const yPlotBands = useMemo(() => {
-    if (!startLine || !endLine) { return []; }
+    if (!startLine || !endLine) {
+      return [];
+    }
 
     return Array.from({ length: endLine - startLine + 1 }, (_, i) => {
       const yValue = startLine + i;
       return {
         from: yValue - 0.5,
         to: yValue + 0.5,
-        color: yValue % 2 === 0 ? "rgba(68, 170, 213, 0.1)" : "rgba(0, 0, 0, 0)",
+        color:
+          yValue % 2 === 0 ? "rgba(68, 170, 213, 0.1)" : "rgba(0, 0, 0, 0)",
         label: {
           text: `${yValue}`, // Label each band with its value
           style: {
@@ -105,7 +112,6 @@ export default function TimelineHighcharts({
       };
     });
   }, [startLine, endLine]);
-
 
   // For the dropdown
   const options = useMemo(
@@ -139,17 +145,26 @@ export default function TimelineHighcharts({
   useEffect(() => {
     if (chartComponentRef.current) {
       const chart = chartComponentRef.current.chart;
-
-      functionKeys.forEach((key) => {
-        // Find existing series in Highcharts
+      chart.series.filter(s => !selectedFunctions.has(s.name.split("-")[0])).forEach(s => s.hide());
+      selectedFunctions.forEach((key) => {
         const lineSeries = chart.series.find((s) => s.name === `${key}-line`);
-        const scatterSeries = chart.series.find((s) => s.name === `${key}-scatter`);
+        const scatterSeries = chart.series.find(
+          (s) => s.name === `${key}-scatter`
+        );
 
-        const sortedData = [...chartData[key]].sort((a, b) => a.timestamp - b.timestamp);
+        const sortedData = [...chartData[key]].sort(
+          (a, b) => a.timestamp - b.timestamp
+        );
 
         const lineData = isRuntimeContext
-          ? sortedData.filter((d) => d.log.type !== "console.log")
-            .map((d) => [d.timestamp, d.value])
+          ? sortedData.map((d) => ({
+            x: d.timestamp,
+            y: d.value,
+            marker:
+                d.log.type === "functionStart" || d.log.type === "functionEnd"
+                  ? { symbol: "triangle", radius: 3, fillColor: "yellow" }
+                  : { symbol: "rectangle", radius: 3, fillColor: "white" },
+          }))
           : [];
 
         const scatterData = sortedData
@@ -159,9 +174,9 @@ export default function TimelineHighcharts({
             y: d.value,
             id: d.log.type === "console.log" ? d.log.logId : "",
           }));
-
         // **Update existing series or create new ones**
         if (lineSeries) {
+          lineSeries.show();
           lineSeries.setData(lineData, false);
         } else {
           chart.addSeries(
@@ -178,6 +193,7 @@ export default function TimelineHighcharts({
         }
 
         if (scatterSeries) {
+          scatterSeries.show();
           scatterSeries.setData(scatterData, false);
         } else {
           chart.addSeries(
@@ -193,9 +209,11 @@ export default function TimelineHighcharts({
                 formatter: function () {
                   if ((this as any).id && logMapping[(this as any).id]) {
                     const logOutput = logMapping[(this as any).id].logData
-                      .map(d => JSON.stringify(d))
+                      .map((d) => JSON.stringify(d))
                       .join(" ");
-                    return logOutput.length > 100 ? `${logOutput.substring(0, 100)}...` : logOutput;
+                    return logOutput.length > 100
+                      ? `${logOutput.substring(0, 100)}...`
+                      : logOutput;
                   }
                   return "";
                 },
@@ -210,16 +228,16 @@ export default function TimelineHighcharts({
               dataLabels: {
                 enabled: !isRuntimeContext, // ✅ Ensure labels update dynamically
               },
-              type: "scatter"
+              type: "scatter",
             },
             false
           );
         }
       });
 
-      chart.redraw(); // Apply updates without full re-render
+      chart.redraw(false); // Apply updates without full re-render
     }
-  }, [chartData, functionKeys, isRuntimeContext, logMapping]);
+  }, [chartData, selectedFunctions, isRuntimeContext, logMapping, functionKeys]);
 
   // Build final Highcharts config
   const chartOptions: Highcharts.Options = useMemo(() => {
@@ -233,12 +251,12 @@ export default function TimelineHighcharts({
         type: "stockChart", // <-- This is important
         backgroundColor: "#1e1e1e",
         zooming: {
-          type: "x"
+          type: "x",
         },
         panning: {
           enabled: true,
-          type: "x"
-        }
+          type: "x",
+        },
       },
       rangeSelector: {
         enabled: false, // Add stock range selector
@@ -259,10 +277,16 @@ export default function TimelineHighcharts({
         style: { color: "#000" },
         formatter: function (): string {
           if ((this as any).id && logMapping[(this as any).id]) {
-            return "<strong>Log Data:</strong><br/>" +
-              logMapping[(this as any).id].logData.map(d => `${JSON.stringify(d)}<br/>`).join("");
+            return (
+              "<strong>Log Data:</strong><br/>" +
+              logMapping[(this as any).id].logData
+                .map((d) => `${JSON.stringify(d)}<br/>`)
+                .join("")
+            );
           }
-          return `<strong>Time:</strong> ${new Date(this.x).toLocaleString()}<br/>
+          return `<strong>Time:</strong> ${new Date(
+            this.x
+          ).toLocaleString()}<br/>
                   <strong>Line:</strong> ${this.y}`;
         },
       },
@@ -282,24 +306,21 @@ export default function TimelineHighcharts({
         tickColor: "#FFFFFF",
         events: {
           setExtremes: function (e): void {
-            if (e.trigger !== "syncExtremes") { // Prevent feedback loop
+            if (e.trigger !== "syncExtremes") {
+              // Prevent feedback loop
               const thisChart = this.chart;
               Highcharts.charts.forEach(function (chart) {
                 if (chart !== thisChart) {
                   if (chart && chart.xAxis[0].setExtremes !== null) {
-                    chart.xAxis[0].setExtremes(
-                      e.min,
-                      e.max,
-                      undefined,
-                      false,
-                      { trigger: "syncExtremes" }
-                    );
+                    chart.xAxis[0].setExtremes(e.min, e.max, undefined, false, {
+                      trigger: "syncExtremes",
+                    });
                   }
                 }
               });
             }
-          }
-        }
+          },
+        },
       },
       yAxis: {
         ordinal: false,
@@ -307,6 +328,7 @@ export default function TimelineHighcharts({
         tickLength: 0,
         lineColor: "#999",
         gridLineWidth: 0,
+        oridinal: false,
         tickColor: "#999",
         title: { text: "" },
         plotBands: yPlotBands,

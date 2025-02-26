@@ -7,7 +7,10 @@ export interface VSCodeState {
 export type ToVSCodeMessage = {
     command: "save";
     text: string;
-} | { command: "requestAST" } | { command: "ready" };
+} | { command: "requestAST" } | { command: "ready" } | {
+    command: "logHover",
+    logId: string,
+};
 
 export type ToEditorMessage = {
     command: "log";
@@ -30,25 +33,21 @@ export type ConsoleLog = {
     functionName: string;
     lineNumber: number;
     timestamp: number;
-    functionKey: number;
+    functionKey: string;
     logData: never[];
     logId: string;
     type: "console.log";
 };
-export type Log = {
-    filename: string;
-    functionName: string;
-    lineNumber: number;
-    timestamp: number;
-    functionKey: number;
+export type Log = ({
     type: "statement";
 } | ConsoleLog | {
     type: "branch";
-    filename: string;
-    functionName: string;
-    functionKey: number;
-    lineNumber: number;
-    timestamp: number;
     branchType: string;
     condition: string;
+} | {type: "functionStart" | "functionEnd"}) & {   
+    lineNumber: number;
+    functionKey: string;
+    timestamp: number;
+    filename: string;
+    functionName: string;
 };
