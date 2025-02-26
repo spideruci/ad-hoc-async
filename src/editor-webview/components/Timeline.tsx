@@ -79,10 +79,10 @@ export default function TimelineHighcharts({
   // All possible function keys
   const functionKeys = useMemo(() => Object.keys(chartData), [chartData]);
 
-  // Multi-select (defaults to all selected)
   const [selectedFunctions, setSelectedFunctions] = useState(
     new Set(functionKeys)
   );
+
   useEffect(() => {
     setSelectedFunctions((prev) => {
       const newSelection = new Set(prev);
@@ -145,9 +145,8 @@ export default function TimelineHighcharts({
   useEffect(() => {
     if (chartComponentRef.current) {
       const chart = chartComponentRef.current.chart;
-
-      functionKeys.forEach((key) => {
-        // Find existing series in Highcharts
+      chart.series.filter(s => !selectedFunctions.has(s.name.split("-")[0])).forEach(s => s.hide());
+      selectedFunctions.forEach((key) => {
         const lineSeries = chart.series.find((s) => s.name === `${key}-line`);
         const scatterSeries = chart.series.find(
           (s) => s.name === `${key}-scatter`
@@ -175,9 +174,9 @@ export default function TimelineHighcharts({
             y: d.value,
             id: d.log.type === "console.log" ? d.log.logId : "",
           }));
-
         // **Update existing series or create new ones**
         if (lineSeries) {
+          lineSeries.show();
           lineSeries.setData(lineData, false);
         } else {
           chart.addSeries(
@@ -194,6 +193,7 @@ export default function TimelineHighcharts({
         }
 
         if (scatterSeries) {
+          scatterSeries.show();
           scatterSeries.setData(scatterData, false);
         } else {
           chart.addSeries(
@@ -237,7 +237,7 @@ export default function TimelineHighcharts({
 
       chart.redraw(false); // Apply updates without full re-render
     }
-  }, [chartData, functionKeys, isRuntimeContext, logMapping]);
+  }, [chartData, selectedFunctions, isRuntimeContext, logMapping, functionKeys]);
 
   // Build final Highcharts config
   const chartOptions: Highcharts.Options = useMemo(() => {
