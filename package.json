@@ -49,6 +49,11 @@
     "onView:co-debugger.sidebarView",
     "*"
   ],
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-customizable"
+    }
+  },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
     "compile": "webpack",
@@ -59,7 +64,8 @@
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "commit": "npx git-cz"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
@@ -72,8 +78,10 @@
     "@typescript-eslint/parser": "^8.7.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
+    "commitizen": "^4.3.1",
     "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^7.1.2",
+    "cz-customizable": "^7.4.0",
     "eslint": "^9.13.0",
     "eslint-plugin-import": "^2.31.0",
     "husky": "^9.1.7",
