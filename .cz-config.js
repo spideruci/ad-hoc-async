@@ -10,7 +10,7 @@ export const types = [
 ];
 export const allowCustomScopes = true;
 export const allowBreakingChanges = false;
-export const skipQuestions = ["breaking"];
+export const skipQuestions = ["breaking", "scope"];
 export const subjectLimit = 100;
 export const allowTicketNumber = false;
 export const footerPrefix = "Tests:";
