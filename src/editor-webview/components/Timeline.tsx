@@ -244,7 +244,8 @@ export default function TimelineHighcharts({
     return {
       boost: {
         enabled: true,
-        seriesThreshold: 200,
+        seriesThreshold: 20,
+        boostThreshold: 2000,
       },
       chart: {
         spacing: [0, 0, 0, 0],
@@ -341,6 +342,7 @@ export default function TimelineHighcharts({
 
       plotOptions: {
         series: {
+          turboThreshold: 0,
           showInNavigator: true, // Enable navigator for each series
           marker: {
             enabled: true, // Makes scatter points more visible
