@@ -236,6 +236,19 @@ export default function TimelineHighcharts({
       });
 
       chart.redraw(false); // Apply updates without full re-render
+
+      // Automatically zoom in on the latest 10 data points
+      const allTimestamps = Object.values(chartData)
+        .flat()
+        .map((d) => d.timestamp)
+        .sort((a, b) => a - b);
+      if (allTimestamps.length > 0) {
+        const totalPoints = allTimestamps.length;
+        const zoomStartIndex = Math.max(totalPoints - 10, 0);
+        const minTimestamp = allTimestamps[zoomStartIndex];
+        const maxTimestamp = allTimestamps[totalPoints - 1];
+        chart.xAxis[0].setExtremes(minTimestamp, maxTimestamp, true, false);
+      }
     }
   }, [chartData, selectedFunctions, isRuntimeContext, logMapping, functionKeys]);
 
@@ -351,7 +364,7 @@ export default function TimelineHighcharts({
       },
       credits: { enabled: false },
     };
-  }, [range, setRange, yPlotBands, startLine, endLine]);
+  }, [range, setRange, yPlotBands, startLine, endLine, chartData, logMapping]);
 
   return (
     <div
