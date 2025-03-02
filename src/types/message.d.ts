@@ -33,7 +33,7 @@ export type ConsoleLog = {
     functionName: string;
     lineNumber: number;
     timestamp: number;
-    functionKey: string;
+    currentUUID: string;
     logData: never[];
     logId: string;
     type: "console.log";
@@ -46,7 +46,8 @@ export type Log = ({
     condition: string;
 } | {type: "functionStart" | "functionEnd"}) & {   
     lineNumber: number;
-    functionKey: string;
+    currentUUID: string;
+    parentUUID: string;
     timestamp: number;
     filename: string;
     functionName: string;

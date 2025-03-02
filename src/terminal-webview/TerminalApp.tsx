@@ -17,15 +17,17 @@ import { Card, CardActions, CardContent, Typography } from "@mui/material";
 import ReactJson from "react-json-view";
 import type {
   ConsoleLog,
+  Log,
   ToEditorMessage,
   ToVSCodeMessage,
   VSCodeState,
 } from "../types/message";
+import { DynamicCallTree } from "./dynamic-call-tree";
 
 interface FunctionAndCallContent {
   logs: Array<ConsoleLog | null>;
   type: "function" | "call" | "allLog";
-  functionKey?: string;
+  currentUUID?: string;
   functionName: string;
   firstLogTimestamp: number;
   listName: string;
@@ -45,10 +47,10 @@ function customSortForFlatFunctionAndCallMap(
     b[1].functionName!
   );
   if (functionNameComparison === 0) {
-    if (a[1].functionKey && !b[1].functionKey) {
+    if (a[1].currentUUID && !b[1].currentUUID) {
       return 1;
     }
-    if (b[1].functionKey && !a[1].functionKey) {
+    if (b[1].currentUUID && !a[1].currentUUID) {
       return -1;
     }
     return a[1].firstLogTimestamp - b[1].firstLogTimestamp;
@@ -59,6 +61,7 @@ const vscode = acquireVsCodeApi<VSCodeState, ToVSCodeMessage>();
 
 const TerminalApp = (): JSX.Element => {
   const [logs, setLogs] = useState<ConsoleLog[]>([]);
+  const [metaLogs, setMetaLogs] = useState<Log[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const [splitBySpecificFunctionSet, setSplitBySpecficFunctionSet] = useState(
     new Set<string>()
@@ -86,6 +89,7 @@ const TerminalApp = (): JSX.Element => {
       if (log.type === "console.log") {
         setLogs((prevLogs) => [...prevLogs, log]);
       }
+      setMetaLogs((prev) => [...prev, log]);
     }
   }, []);
 
@@ -102,9 +106,9 @@ const TerminalApp = (): JSX.Element => {
   }, [handleMessage]);
 
   const handleSpecificFunctionCallSplits = useCallback(
-    (functionName: string, functionKey: string) => {
+    (functionName: string, currentUUID: string) => {
       setSplitBySpecificFunctionCallSet((prev) => {
-        const key = `${functionName}-${functionKey}`;
+        const key = `${functionName}-${currentUUID}`;
         const newSet = new Set([...prev, key]);
         if (prev.has(key)) {
           newSet.delete(key);
@@ -139,6 +143,7 @@ const TerminalApp = (): JSX.Element => {
     },
     [setRowOpenSet]
   );
+
   const functionLogMap = useMemo(() => {
     const filteredLogs = logs.filter((log) => log.type === "console.log");
     const functionLogMap: FunctionAndCallMap = {};
@@ -146,15 +151,15 @@ const TerminalApp = (): JSX.Element => {
     filteredLogs
       .sort((a, b) => a.timestamp - b.timestamp)
       .forEach((v) => {
-        const key = `${v.functionName}-${v.functionKey}`;
+        const key = `${v.functionName}-${v.currentUUID}`;
 
         if (splitBySpecificFunctionCallSet.has(key)) {
           if (!functionLogMap[key]) {
             functionLogMap[key] = {
-              listName: `${v.functionName}-${v.functionKey}`,
+              listName: `${v.functionName}-${v.currentUUID}`,
               logs: new Array(currentLength).fill(null),
               type: "call",
-              functionKey: v.functionKey,
+              currentUUID: v.currentUUID,
               functionName: v.functionName,
               firstLogTimestamp: v.timestamp,
             };
@@ -195,6 +200,13 @@ const TerminalApp = (): JSX.Element => {
     return functionLogMap;
   }, [logs, splitBySpecificFunctionCallSet, splitBySpecificFunctionSet]);
 
+  const functionCallTree = useMemo(() => {
+    const callTree = new DynamicCallTree();
+    for (let log of metaLogs) {
+      callTree.appendNode(log);
+    }
+    return callTree;
+  }, [metaLogs]);
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
@@ -238,7 +250,7 @@ const TerminalApp = (): JSX.Element => {
                             } else {
                               handleSpecificFunctionCallSplits(
                                 functionLogs.functionName,
-                                functionLogs.functionKey!
+                                functionLogs.currentUUID!
                               );
                             }
                           }}
@@ -267,13 +279,26 @@ const TerminalApp = (): JSX.Element => {
                             <ListItemText
                               primary={String(log.logData[0]).substring(0, 100)}
                             />
-                            {(log.logData.length > 1 ||
-                              String(log.logData[0]).length > 100) ??
-                              (rowOpenSet.has(index) ? (
-                                <ExpandLess />
-                              ) : (
-                                <ExpandMore />
-                              ))}
+                            <IconButton
+                              edge="end"
+                              aria-label="delete"
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (functionLogs.type === "allLog") {
+                                  handleSpecificFunctionSplits(
+                                    log.functionName
+                                  );
+                                } else {
+                                  handleSpecificFunctionCallSplits(
+                                    log.functionName,
+                                    log.currentUUID
+                                  );
+                                }
+                              }}
+                            >
+                              <KeyboardArrowRightIcon fontSize="inherit" />
+                            </IconButton>
                           </ListItemButton>
                           <Collapse
                             in={rowOpenSet.has(index)}
@@ -287,15 +312,17 @@ const TerminalApp = (): JSX.Element => {
                               <CardContent>
                                 {log.logData.map((data) => {
                                   if (typeof data === "object") {
-                                    return <ReactJson
-                                      theme={"monokai"}
-                                      onEdit={false}
-                                      onAdd={false}
-                                      onDelete={false}
-                                      collapseStringsAfterLength={100}
-                                      collapsed={true}
-                                      src={data}
-                                    />;
+                                    return (
+                                      <ReactJson
+                                        theme={"monokai"}
+                                        onEdit={false}
+                                        onAdd={false}
+                                        onDelete={false}
+                                        collapseStringsAfterLength={100}
+                                        collapsed={true}
+                                        src={data}
+                                      />
+                                    );
                                   } else {
                                     return (
                                       <Typography variant="body2">
@@ -305,28 +332,6 @@ const TerminalApp = (): JSX.Element => {
                                   }
                                 })}
                               </CardContent>
-                              <CardActions>
-                                <IconButton
-                                  edge="end"
-                                  aria-label="delete"
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (functionLogs.type === "allLog") {
-                                      handleSpecificFunctionSplits(
-                                        log.functionName
-                                      );
-                                    } else {
-                                      handleSpecificFunctionCallSplits(
-                                        log.functionName,
-                                        log.functionKey
-                                      );
-                                    }
-                                  }}
-                                >
-                                  <KeyboardArrowRightIcon fontSize="inherit" />
-                                </IconButton>
-                              </CardActions>
                             </Card>
                           </Collapse>
                           <Divider />

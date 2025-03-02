@@ -50,8 +50,8 @@ export default function TimelineHighcharts({
           mapping[log.functionName] = {};
           counters[log.functionName] = 1;
         }
-        if (!mapping[log.functionName][log.functionKey]) {
-          mapping[log.functionName][log.functionKey] = counters[
+        if (!mapping[log.functionName][log.currentUUID]) {
+          mapping[log.functionName][log.currentUUID] = counters[
             log.functionName
           ]++;
         }
@@ -64,7 +64,7 @@ export default function TimelineHighcharts({
   const chartData = useMemo(() => {
     return logs.reduce((acc, log) => {
       if (log.lineNumber >= startLine && log.lineNumber <= endLine) {
-        const key = `${log.functionName}::-::${log.functionKey}`;
+        const key = `${log.functionName}::-::${log.currentUUID}`;
         acc[key] = acc[key] || [];
         acc[key].push({
           timestamp: log.timestamp,
