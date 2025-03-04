@@ -202,7 +202,7 @@ const TerminalApp = (): JSX.Element => {
 
   const functionCallTree = useMemo(() => {
     const callTree = new DynamicCallTree();
-    for (let log of metaLogs) {
+    for (let log of metaLogs.sort((a, b) => a.timestamp - b.timestamp)) {
       callTree.appendNode(log);
     }
     return callTree;

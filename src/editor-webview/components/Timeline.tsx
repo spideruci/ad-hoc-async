@@ -234,21 +234,18 @@ export default function TimelineHighcharts({
           );
         }
       });
-
-      chart.redraw(false); // Apply updates without full re-render
-
-      // Automatically zoom in on the latest 10 data points
-      const allTimestamps = Object.values(chartData)
-        .flat()
+      const allTimestamps = logs
         .map((d) => d.timestamp)
         .sort((a, b) => a - b);
       if (allTimestamps.length > 0) {
         const totalPoints = allTimestamps.length;
-        const zoomStartIndex = Math.max(totalPoints - 10, 0);
+        const zoomStartIndex = Math.max(totalPoints - 40, 0);
         const minTimestamp = allTimestamps[zoomStartIndex];
         const maxTimestamp = allTimestamps[totalPoints - 1];
-        chart.xAxis[0].setExtremes(minTimestamp, maxTimestamp, true, false);
+        chart.xAxis[0].setExtremes(minTimestamp, maxTimestamp, false, false);
       }
+      chart.redraw(true); // Apply updates without full re-render
+      // Automatically zoom in on the latest 10 data points
     }
   }, [chartData, selectedFunctions, isRuntimeContext, logMapping, functionKeys]);
 
@@ -326,7 +323,7 @@ export default function TimelineHighcharts({
               Highcharts.charts.forEach(function (chart) {
                 if (chart !== thisChart) {
                   if (chart && chart.xAxis[0].setExtremes !== null) {
-                    chart.xAxis[0].setExtremes(e.min, e.max, undefined, false, {
+                    chart.xAxis[0].setExtremes(e.min, e.max, true, false, {
                       trigger: "syncExtremes",
                     });
                   }
@@ -402,6 +399,7 @@ export default function TimelineHighcharts({
         allowChartUpdate={true}
         constructorType={"stockChart"}
         options={chartOptions}
+        updateArgs={[true, false, false]}
         containerProps={{ style: { height: "100%", width: "100%" } }}
       />
     </div>
