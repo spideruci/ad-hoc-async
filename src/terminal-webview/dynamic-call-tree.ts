@@ -4,12 +4,14 @@ export type LogNode = Log & {
   children: LogNode[];
   associatedLogs: Log[];
 };
-
 export interface AbstractNode {
   filename: string;
   functionName: string;
   children: AbstractNode[];
+  callCount: number;
+  consoleLogLines: Set<number>; // Tracks unique console.log line numbers
 }
+
 
 export class DynamicCallTree {
   private nodeMap = new Map<string, LogNode>();
@@ -29,13 +31,14 @@ export class DynamicCallTree {
 
   private handleFunctionStart(log: Log): LogNode[] {
     if (this.nodeMap.has(log.currentUUID)) {
-      return this.roots; // Skip duplicates
+      return this.roots;
     }
 
     const newNode: LogNode = { ...log, children: [], associatedLogs: [] };
     this.nodeMap.set(log.currentUUID, newNode);
 
     const parentNode = this.nodeMap.get(log.parentUUID);
+
     if (parentNode) {
       parentNode.children.push(newNode);
     } else {
@@ -54,9 +57,18 @@ export class DynamicCallTree {
       );
       return;
     }
-
+  
+  
+    if (log.type === "console.log") {
+      const nodeKey = `${currentFunctionNode.filename}||${currentFunctionNode.functionName}`;
+      const abstractNode = this.abstractNodeMap.get(nodeKey);
+      if (abstractNode) {
+        abstractNode.consoleLogLines.add(log.lineNumber);
+      }
+    }
     currentFunctionNode.associatedLogs.push(log);
   }
+  
 
   public getRoots(): LogNode[] {
     return this.roots;
@@ -93,35 +105,42 @@ export class DynamicCallTree {
   private updateAbstractTreeOnAdd(
     node: LogNode,
     parentNode: LogNode | undefined
-  ) {
+  ): void {
     const { filename, functionName } = node;
-
     const nodeKey = `${filename}||${functionName}`;
-
-    if (parentNode) {
-      const parentKey = `${parentNode.filename}||${parentNode.functionName}`;
-      const parentAbstract = this.abstractNodeMap.get(parentKey);
-
-      if (!parentAbstract) {
-        throw new Error(`Abstract parent node not found for ${parentKey}`);
-      }
-
-      if (!this.abstractNodeMap.has(nodeKey)) {
-        const newAbstractNode: AbstractNode = {
-          filename,
-          functionName,
-          children: [],
-        };
-        parentAbstract.children.push(newAbstractNode);
-        this.abstractNodeMap.set(nodeKey, newAbstractNode);
+  
+    if (this.abstractNodeMap.has(nodeKey)) {
+      // If the node already exists, increment its call count
+      const existingNode = this.abstractNodeMap.get(nodeKey);
+      if (existingNode) {
+        existingNode.callCount += 1;
       }
     } else {
-      // Root node
-      if (!this.abstractNodeMap.has(nodeKey)) {
-        const newRoot: AbstractNode = { filename, functionName, children: [] };
-        this.abstractRoots.push(newRoot);
-        this.abstractNodeMap.set(nodeKey, newRoot);
+      // If the node doesn't exist, create it with a call count of 1
+      const newAbstractNode: AbstractNode = {
+        filename,
+        functionName,
+        children: [],
+        callCount: 1,
+        consoleLogLines: new Set<number>(), // Initialize the Set
+      };
+  
+      if (parentNode) {
+        const parentKey = `${parentNode.filename}||${parentNode.functionName}`;
+        const parentAbstract = this.abstractNodeMap.get(parentKey);
+  
+        if (!parentAbstract) {
+          throw new Error(`Abstract parent node not found for ${parentKey}`);
+        }
+  
+        parentAbstract.children.push(newAbstractNode);
+      } else {
+        // Root node
+        this.abstractRoots.push(newAbstractNode);
       }
+  
+      this.abstractNodeMap.set(nodeKey, newAbstractNode);
     }
   }
+  
 }

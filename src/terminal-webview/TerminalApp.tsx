@@ -11,9 +11,7 @@ import IconButton from "@mui/material/IconButton";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import Collapse from "@mui/material/Collapse";
-import ExpandLess from "@mui/icons-material/ExpandLess";
-import ExpandMore from "@mui/icons-material/ExpandMore";
-import { Card, CardActions, CardContent, Typography } from "@mui/material";
+import { Card, CardContent, Typography } from "@mui/material";
 import ReactJson from "react-json-view";
 import type {
   ConsoleLog,
@@ -23,6 +21,7 @@ import type {
   VSCodeState,
 } from "../types/message";
 import { DynamicCallTree } from "./dynamic-call-tree";
+import AbstractTreeView from "./DynamicTreeView";
 
 interface FunctionAndCallContent {
   logs: Array<ConsoleLog | null>;
@@ -42,7 +41,7 @@ const darkTheme = createTheme({
 function customSortForFlatFunctionAndCallMap(
   a: [string, FunctionAndCallContent],
   b: [string, FunctionAndCallContent]
-) {
+): number {
   const functionNameComparison = a[1].functionName!.localeCompare(
     b[1].functionName!
   );
@@ -209,141 +208,153 @@ const TerminalApp = (): JSX.Element => {
   }, [metaLogs]);
   return (
     <ThemeProvider theme={darkTheme}>
-      <CssBaseline />
-      <Box display="flex" flexDirection="column" height="100vh">
-        <Box flex={1} p={1} sx={{ height: "100%", overflow: "hidden" }}>
-          <Box
-            ref={listRef}
-            onScroll={handleScroll}
-            sx={{
-              flex: 1,
-              height: "100%",
-              overflowY: "auto",
-              overflowX: "auto",
-              display: "flex",
-              flexDirection: "row",
-              flexWrap: "nowrap",
-            }}
-          >
-            {Object.entries(functionLogMap)
-              .sort(customSortForFlatFunctionAndCallMap)
-              .map(([k, functionLogs]) => (
-                <Box key={k} sx={{ minWidth: "400px", flex: "1" }}>
-                  <List
-                    dense={true}
-                    subheader={
-                      <ListSubheader>
-                        {functionLogs.listName}{" "}
-                        <IconButton
-                          edge="end"
-                          aria-label="delete"
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (
-                              functionLogs.type !== "allLog" &&
-                              functionLogs.type === "function"
-                            ) {
-                              handleSpecificFunctionSplits(
-                                functionLogs.functionName
-                              );
-                            } else {
-                              handleSpecificFunctionCallSplits(
-                                functionLogs.functionName,
-                                functionLogs.currentUUID!
-                              );
-                            }
-                          }}
-                        >
-                          <KeyboardArrowLeftIcon fontSize="inherit" />
-                        </IconButton>
-                      </ListSubheader>
-                    }
-                  >
-                    {functionLogs.logs.map((log, index) =>
-                      log === null ? (
-                        <div
-                          key={`empty-${functionLogs.functionName}-${index}`}
-                          style={{
-                            height: rowOpenSet.has(index) ? "80px" : "30px",
-                          }}
-                        >
-                          <Divider />
-                        </div>
-                      ) : (
-                        <div key={`log-${functionLogs.functionName}-${index}`}>
-                          <ListItemButton
-                            sx={{ height: "30px" }}
-                            onClick={() => handleListItemExpandClick(index)}
+      <Box display="flex" flexDirection={"row"}>
+        <Box display="flex">
+          <AbstractTreeView
+            dynamicCallTree={functionCallTree}
+          ></AbstractTreeView>
+        </Box>
+        <Box display="flex" flexDirection="column" height="100vh">
+          <Box flex={1} p={1} sx={{ height: "100%", overflow: "hidden" }}>
+            <Box
+              ref={listRef}
+              onScroll={handleScroll}
+              sx={{
+                flex: 1,
+                height: "100%",
+                overflowY: "auto",
+                overflowX: "auto",
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "nowrap",
+              }}
+            >
+              {Object.entries(functionLogMap)
+                .sort(customSortForFlatFunctionAndCallMap)
+                .map(([k, functionLogs]) => (
+                  <Box key={k} sx={{ minWidth: "400px", flex: "1" }}>
+                    <List
+                      dense={true}
+                      subheader={
+                        <ListSubheader>
+                          {functionLogs.listName}{" "}
+                          <IconButton
+                            edge="end"
+                            aria-label="delete"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (
+                                functionLogs.type !== "allLog" &&
+                                functionLogs.type === "function"
+                              ) {
+                                handleSpecificFunctionSplits(
+                                  functionLogs.functionName
+                                );
+                              } else {
+                                handleSpecificFunctionCallSplits(
+                                  functionLogs.functionName,
+                                  functionLogs.currentUUID!
+                                );
+                              }
+                            }}
                           >
-                            <ListItemText
-                              primary={String(log.logData[0]).substring(0, 100)}
-                            />
-                            <IconButton
-                              edge="end"
-                              aria-label="delete"
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (functionLogs.type === "allLog") {
-                                  handleSpecificFunctionSplits(
-                                    log.functionName
-                                  );
-                                } else {
-                                  handleSpecificFunctionCallSplits(
-                                    log.functionName,
-                                    log.currentUUID
-                                  );
-                                }
-                              }}
-                            >
-                              <KeyboardArrowRightIcon fontSize="inherit" />
-                            </IconButton>
-                          </ListItemButton>
-                          <Collapse
-                            in={rowOpenSet.has(index)}
-                            timeout="auto"
-                            unmountOnExit
+                            <KeyboardArrowLeftIcon fontSize="inherit" />
+                          </IconButton>
+                        </ListSubheader>
+                      }
+                    >
+                      {functionLogs.logs.map((log, index) =>
+                        log === null ? (
+                          <div
+                            key={`empty-${functionLogs.functionName}-${index}`}
+                            style={{
+                              height: rowOpenSet.has(index) ? "80px" : "30px",
+                            }}
                           >
-                            <Card
-                              sx={{ height: "auto" }}
-                              onMouseEnter={() => handleLogHover(log.logId)}
+                            <Divider />
+                          </div>
+                        ) : (
+                          <div
+                            key={`log-${functionLogs.functionName}-${index}`}
+                          >
+                            <ListItemButton
+                              sx={{ height: "30px" }}
+                              onClick={() => handleListItemExpandClick(index)}
                             >
-                              <CardContent>
-                                {log.logData.map((data) => {
-                                  if (typeof data === "object") {
-                                    return (
-                                      <ReactJson
-                                        theme={"monokai"}
-                                        onEdit={false}
-                                        onAdd={false}
-                                        onDelete={false}
-                                        collapseStringsAfterLength={100}
-                                        collapsed={true}
-                                        src={data}
-                                      />
+                              <ListItemText
+                                primary={String(log.logData[0]).substring(
+                                  0,
+                                  100
+                                )}
+                              />
+                              <IconButton
+                                edge="end"
+                                aria-label="delete"
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (functionLogs.type === "allLog") {
+                                    handleSpecificFunctionSplits(
+                                      log.functionName
                                     );
                                   } else {
-                                    return (
-                                      <Typography variant="body2">
-                                        {String(data)}
-                                      </Typography>
+                                    handleSpecificFunctionCallSplits(
+                                      log.functionName,
+                                      log.currentUUID
                                     );
                                   }
-                                })}
-                              </CardContent>
-                            </Card>
-                          </Collapse>
-                          <Divider />
-                        </div>
-                      )
-                    )}
-                  </List>
-                </Box>
-              ))}
+                                }}
+                              >
+                                <KeyboardArrowRightIcon fontSize="inherit" />
+                              </IconButton>
+                            </ListItemButton>
+                            <Collapse
+                              in={rowOpenSet.has(index)}
+                              timeout="auto"
+                              unmountOnExit
+                            >
+                              <Card
+                                sx={{ height: "auto" }}
+                                onMouseEnter={() => handleLogHover(log.logId)}
+                              >
+                                <CardContent>
+                                  {log.logData.map((data) => {
+                                    if (typeof data === "object") {
+                                      return (
+                                        <ReactJson
+                                          theme={"monokai"}
+                                          onEdit={false}
+                                          onAdd={false}
+                                          onDelete={false}
+                                          collapseStringsAfterLength={100}
+                                          collapsed={true}
+                                          src={data}
+                                        />
+                                      );
+                                    } else {
+                                      return (
+                                        <Typography variant="body2">
+                                          {String(data)}
+                                        </Typography>
+                                      );
+                                    }
+                                  })}
+                                </CardContent>
+                              </Card>
+                            </Collapse>
+                            <Divider />
+                          </div>
+                        )
+                      )}
+                    </List>
+                  </Box>
+                ))}
+            </Box>
           </Box>
         </Box>
       </Box>
+      <CssBaseline />
     </ThemeProvider>
   );
 };

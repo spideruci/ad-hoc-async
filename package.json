@@ -113,6 +113,7 @@
     "highcharts-react-official": "^3.2.1",
     "monaco-editor": "^0.52.2",
     "react": "^18.3.1",
+    "react-accessible-treeview": "^2.11.0",
     "react-dom": "^18.3.1",
     "react-json-view": "^1.21.3",
     "react-select": "^5.10.0",
