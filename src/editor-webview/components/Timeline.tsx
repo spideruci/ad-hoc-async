@@ -124,12 +124,6 @@ export default function TimelineHighcharts({
     [functionKeyMapping, functionKeys]
   );
 
-  const handleSelectChange = (
-    newValue: MultiValue<{ value: string; label: string }>,
-    _actionMeta: ActionMeta<{ value: string; label: string }>
-  ): void => {
-    setSelectedFunctions(new Set(newValue.map((option) => option.value)));
-  };
   const logMapping = useMemo(() => {
     const mapping: Record<string, ConsoleLog> = {};
     functionKeys.forEach((key) => {
@@ -375,11 +369,6 @@ export default function TimelineHighcharts({
         backgroundColor: "#1e1e1e",
       }}
     >
-      <SelectFunctionInvocation
-        options={options}
-        selectedFunctions={selectedFunctions}
-        handleSelectChange={handleSelectChange}
-      />
       <ToggleButtonGroup
         size="small"
         orientation="vertical"

@@ -1,0 +1,48 @@
+.call-tree {
+    background: #242322;
+    font-family: monospace;
+    font-size: 16px;
+    color: white;
+    user-select: none;
+    padding: 20px;
+    border-radius: 0.4em;
+  }
+  
+  .call-tree .tree,
+  .call-tree .tree-node,
+  .call-tree .tree-node-group {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .call-tree .tree-branch-wrapper,
+  .call-tree .tree-node__leaf {
+    outline: none;
+    outline: none;
+  }
+  
+  .call-tree .tree-node {
+    cursor: pointer;
+  }
+  
+  .call-tree .tree-node:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .call-tree .tree .tree-node--focused {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .call-tree .tree .tree-node--selected {
+    background: rgba(48, 107, 176);
+  }
+  
+  .call-tree .tree-node__branch {
+    display: block;
+  }
+  
+  .call-tree .icon {
+    vertical-align: middle;
+    padding-right: 5px;
+  }
