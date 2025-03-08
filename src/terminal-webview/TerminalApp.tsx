@@ -14,15 +14,59 @@ import Collapse from "@mui/material/Collapse";
 import { Card, CardContent, Typography } from "@mui/material";
 import ReactJson from "react-json-view";
 import type {
+  TreeItem
+} from "react-complex-tree";
+import {
+  UncontrolledTreeEnvironment,
+  Tree,
+  StaticTreeDataProvider
+} from "react-complex-tree";
+import type {
   ConsoleLog,
   Log,
   ToEditorMessage,
   ToVSCodeMessage,
   VSCodeState,
 } from "../types/message";
+import type { AbstractNode } from "./dynamic-call-tree";
 import { DynamicCallTree } from "./dynamic-call-tree";
-import AbstractTreeView from "./DynamicTreeView";
+import "react-complex-tree/lib/style-modern.css";
 
+// Utility to extract the filename (last part of the path)
+function getFilenameOnly(fullpath: string): string {
+  return fullpath.split("/").pop() || fullpath;
+}
+
+interface UIAbstractTreeNode {
+  name: string;
+  filename: string;
+  callCount: number;
+  consoleLogCount: number;
+}
+// Convert the abstract node tree to the format TreeView expects
+function convertToTreeItems(
+  node: AbstractNode
+): Record<string, TreeItem<UIAbstractTreeNode>> {
+  const { filename, functionName, children, callCount, consoleLogLines } = node;
+  const nodeId = `${filename}||${functionName}`;
+
+  const item: TreeItem<UIAbstractTreeNode> = {
+    index: nodeId,
+    isFolder: children.length > 0,
+    children: children.map(child => `${child.filename}||${child.functionName}`),
+    data: {
+      name: functionName,
+      filename: getFilenameOnly(filename),
+      callCount,
+      consoleLogCount: consoleLogLines.size,
+    },
+  };
+
+  return children.reduce(
+    (acc, child) => ({ ...acc, ...convertToTreeItems(child) }),
+    { [nodeId]: item }
+  );
+}
 interface FunctionAndCallContent {
   logs: Array<ConsoleLog | null>;
   type: "function" | "call" | "allLog";
@@ -199,21 +243,32 @@ const TerminalApp = (): JSX.Element => {
     return functionLogMap;
   }, [logs, splitBySpecificFunctionCallSet, splitBySpecificFunctionSet]);
 
-  const functionCallTree = useMemo(() => {
+  const dataProvider = useMemo(() => {
     const callTree = new DynamicCallTree();
     for (let log of metaLogs.sort((a, b) => a.timestamp - b.timestamp)) {
       callTree.appendNode(log);
     }
-    return callTree;
+    const abstractedTrees = callTree.getAbstractedTree();
+    const virtualRootId = "virtual-root";
+    const virtualRootItem: TreeItem<UIAbstractTreeNode> = {
+      index: virtualRootId,
+      isFolder: true,
+      children: abstractedTrees.map(root => `${root.filename}||${root.functionName}`),
+      data: { name: "Root", filename: "", callCount: 0, consoleLogCount: 0 },
+    };
+
+    const newItems = abstractedTrees.reduce((acc, root) => {
+      return { ...acc, ...convertToTreeItems(root) };
+    }, { [virtualRootId]: virtualRootItem });
+    const newDataProvider = new StaticTreeDataProvider<UIAbstractTreeNode>(newItems, (item, newName) => ({
+      ...item,
+      data: { ...item.data, name: newName },
+    }));
+    return newDataProvider;
   }, [metaLogs]);
   return (
     <ThemeProvider theme={darkTheme}>
       <Box display="flex" flexDirection={"row"}>
-        <Box display="flex">
-          <AbstractTreeView
-            dynamicCallTree={functionCallTree}
-          ></AbstractTreeView>
-        </Box>
         <Box display="flex" flexDirection="column" height="100vh">
           <Box flex={1} p={1} sx={{ height: "100%", overflow: "hidden" }}>
             <Box
@@ -233,6 +288,17 @@ const TerminalApp = (): JSX.Element => {
                 .sort(customSortForFlatFunctionAndCallMap)
                 .map(([k, functionLogs]) => (
                   <Box key={k} sx={{ minWidth: "400px", flex: "1" }}>
+                    <UncontrolledTreeEnvironment
+                      dataProvider={dataProvider}
+                      getItemTitle={(item: TreeItem<UIAbstractTreeNode>) => item.data.name}
+                      viewState={{}}
+                    >
+                      <Tree
+                        treeId="abstract-tree"
+                        rootItem="virtual-root" // Assuming a single root; adjust as necessary
+                        treeLabel="AbstractFunctionCallTree"
+                      />
+                    </UncontrolledTreeEnvironment>
                     <List
                       dense={true}
                       subheader={
