@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import type { ActionMeta, MultiValue } from "react-select";
 import Highcharts from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 import "highcharts/modules/boost";
@@ -8,7 +7,6 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
 import type { ConsoleLog, Log } from "../../types/message";
 import { useRange } from "../context-providers/RangeProvider";
-import SelectFunctionInvocation from "./SelectFunctionInvocation";
 
 declare module "highcharts" {
   export function each<T>(
@@ -37,30 +35,8 @@ export default function TimelineHighcharts({
   ): void => {
     setIsRuntimeContext(runtimeContext);
   };
-  // Range context
   const { range, setRange } = useRange();
 
-  const functionKeyMapping = useMemo(() => {
-    const mapping: Record<string, Record<string, number>> = {};
-    const counters: Record<string, number> = {};
-
-    logs.forEach((log) => {
-      if (log.lineNumber >= startLine && log.lineNumber <= endLine) {
-        if (!mapping[log.functionName]) {
-          mapping[log.functionName] = {};
-          counters[log.functionName] = 1;
-        }
-        if (!mapping[log.functionName][log.currentUUID]) {
-          mapping[log.functionName][log.currentUUID] = counters[
-            log.functionName
-          ]++;
-        }
-      }
-    });
-
-    return mapping;
-  }, [logs, startLine, endLine]);
-  // Group logs by function key
   const chartData = useMemo(() => {
     return logs.reduce((acc, log) => {
       if (log.lineNumber >= startLine && log.lineNumber <= endLine) {
@@ -112,17 +88,6 @@ export default function TimelineHighcharts({
       };
     });
   }, [startLine, endLine]);
-
-  // For the dropdown
-  const options = useMemo(
-    () =>
-      functionKeys.map((key) => {
-        const [functionName, functionKey] = key.split("::-::");
-        const labelIndex = functionKeyMapping[functionName][functionKey];
-        return { value: key, label: String(labelIndex) };
-      }),
-    [functionKeyMapping, functionKeys]
-  );
 
   const logMapping = useMemo(() => {
     const mapping: Record<string, ConsoleLog> = {};

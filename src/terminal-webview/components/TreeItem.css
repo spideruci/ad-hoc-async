@@ -1,0 +1,8 @@
+.Collapse svg {
+    transition: transform 250ms ease;
+  }
+  
+  
+  .Collapse.collapsed svg {
+    transform: rotate(-90deg);
+  }
