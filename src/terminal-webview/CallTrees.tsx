@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import type { DynamicCallTree } from "./dynamic-call-tree";
 import { SortableTree } from "./components/SortableTree";
 import convertAbstractNodeToTreeItem from "./components/utils/convertAbstractNodeToTreeItem";
-import { ConsoleLog } from "../types/message";
+import type { ConsoleLog } from "../types/message";
 
 export interface CallTreesProps {
   dynamicCallTree: DynamicCallTree;

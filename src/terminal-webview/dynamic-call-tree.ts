@@ -26,7 +26,7 @@ export class DynamicCallTree {
 
   private originalAbstractRoots: AbstractNode[] = [];
   private originalAbstractNodeMap = new Map<string, AbstractNode>(); // Track original locations
-  
+
   public appendNode(log: Log): LogNode[] {
     if (log.type === "functionStart") {
       const updatedNodes = this.handleFunctionStart(log);
@@ -99,12 +99,11 @@ export class DynamicCallTree {
       );
       return;
     }
-    
+
     if (log.type === "console.log") {
       const nodeKey = `${currentFunctionNode.filename}||${currentFunctionNode.functionName}`;
       let originalAbstractNode = this.originalAbstractNodeMap.get(nodeKey)!;
 
-      
       const logKey = `${nodeKey}||${log.lineNumber}`;
       let logNode = this.originalAbstractNodeMap.get(logKey);
       if (!logNode) {
@@ -126,7 +125,7 @@ export class DynamicCallTree {
     }
     currentFunctionNode.associatedLogs.push(log);
   }
-  
+
   splitAbstractedTreesBySubtreeId(key: string): void {
     // Split the abstracted trees by the subtree id
     // find the subtree with the given key
@@ -152,8 +151,11 @@ export class DynamicCallTree {
     // add the new abstracted tree to the list of abstracted trees
     this.abstractRoots.push(subtree);
   }
-  
-  mergeTwoAbstractedTrees(root1: string, root2: string): AbstractNode | AbstractNode[] {
+
+  mergeTwoAbstractedTrees(
+    root1: string,
+    root2: string
+  ): AbstractNode | AbstractNode[] {
     // this function will merge the tree based on the original abstracted trees location
     // if one of the trees is a subtree of the other, then we merge one of them under the other, and return the new tree
     // if they are siblings, then we do not merge them but return two separate trees
@@ -166,7 +168,7 @@ export class DynamicCallTree {
     if (!originalSubtree2) {
       throw new Error(`Subtree with key ${root2} not found.`);
     }
-  
+
     const abstractedTree1 = this.abstractNodeMap.get(root1);
     if (!abstractedTree1) {
       throw new Error(`Abstracted tree with key ${root1} not found.`);
@@ -175,10 +177,15 @@ export class DynamicCallTree {
     if (!abstractedTree2) {
       throw new Error(`Abstracted tree with key ${root2} not found.`);
     }
-  
+
     // remove the two subtrees from the list of abstracted trees
-    this.abstractRoots = this.abstractRoots.filter((root) => root.key !== root1 && root.key !== root2);
-    const findParent = (node: AbstractNode, target: AbstractNode): AbstractNode | undefined => {
+    this.abstractRoots = this.abstractRoots.filter(
+      (root) => root.key !== root1 && root.key !== root2
+    );
+    const findParent = (
+      node: AbstractNode,
+      target: AbstractNode
+    ): AbstractNode | undefined => {
       for (const child of node.children) {
         if (child.key === target.key) {
           return node;
@@ -204,10 +211,14 @@ export class DynamicCallTree {
         if (abstractParent) {
           abstractParent.children.push(abstractedTree1);
         } else {
-          throw new Error(`Abstract parent node with key ${parent.key} not found.`);
+          throw new Error(
+            `Abstract parent node with key ${parent.key} not found.`
+          );
         }
       } else {
-        throw new Error(`Parent of the subtree with key ${root1} not found in ${root2}.`);
+        throw new Error(
+          `Parent of the subtree with key ${root1} not found in ${root2}.`
+        );
       }
       return abstractedTree2;
     } else if (this.findSubtree(originalSubtree1, originalSubtree2)) {
@@ -222,10 +233,14 @@ export class DynamicCallTree {
         if (abstractParent) {
           abstractParent.children.push(abstractedTree2);
         } else {
-          throw new Error(`Abstract parent node with key ${parent.key} not found.`);
+          throw new Error(
+            `Abstract parent node with key ${parent.key} not found.`
+          );
         }
       } else {
-        throw new Error(`Parent of the subtree with key ${root2} not found in ${root1}.`);
+        throw new Error(
+          `Parent of the subtree with key ${root2} not found in ${root1}.`
+        );
       }
       return abstractedTree1;
     } else {
@@ -250,7 +265,10 @@ export class DynamicCallTree {
   }
 
   // findAndRemoveSubtree is a recursive function that traverses the tree and removes the subtree with the given key
-  private findAndRemoveSubtree(node: AbstractNode, subtree: AbstractNode): boolean {
+  private findAndRemoveSubtree(
+    node: AbstractNode,
+    subtree: AbstractNode
+  ): boolean {
     if (node === subtree) {
       return true;
     }
@@ -271,8 +289,6 @@ export class DynamicCallTree {
   public getAbstractedTrees(): AbstractNode[] {
     return this.abstractRoots;
   }
-
-      
 
   public getLogsWithinTheFunctionCall(uuid: string): Log[] {
     const node = this.nodeMap.get(uuid);
@@ -297,6 +313,47 @@ export class DynamicCallTree {
       associatedLogs: [...node.associatedLogs],
     };
   }
+  public getParentLogNodeMatchingFunctionKey(
+    uuid: string,
+    functionKey?: string
+  ): LogNode | null {
+    const node = this.nodeMap.get(uuid);
+    if (!functionKey) { return null; }
+    if (!node) {
+      return null;
+    }
+    // we first find the abstractNode the target parent function belongs to
+    const abstractNode = this.abstractNodeMap.get(functionKey);
+    if (!abstractNode) {
+      return null;
+    }
+    // then we find the parent function of the console log
+    const parentFunction = this.findParentFunction(node, abstractNode);
+    if (!parentFunction) {
+      return null;
+    }
+    return parentFunction;
+  }
+  private findParentFunction(
+    node: LogNode,
+    target: AbstractNode
+  ): LogNode | null {
+    if (
+      node.filename === target.filename &&
+      node.functionName === target.functionName
+    ) {
+      return node;
+    }
+    // we need to find the parent of LogNode
+    // and check if it match the target abstractNode's signature aka filename and functionName
+    if (node.parentUUID) {
+      const parent = this.nodeMap.get(node.parentUUID);
+      if (parent) {
+        return this.findParentFunction(parent, target);
+      }
+    }
+    return null;
+  }
 
   private updateOriginalAbstractTreeOnAdd(
     node: LogNode,
@@ -304,7 +361,7 @@ export class DynamicCallTree {
   ): void {
     const { filename, functionName } = node;
     const nodeKey = `${filename}||${functionName}`;
-  
+
     if (this.originalAbstractNodeMap.has(nodeKey)) {
       const existingNode = this.originalAbstractNodeMap.get(nodeKey);
       if (existingNode) {
@@ -315,28 +372,29 @@ export class DynamicCallTree {
         key: nodeKey,
         filename,
         functionName,
-        parentId: parentNode ? `${parentNode.filename}||${parentNode.functionName}` : null,
+        parentId: parentNode
+          ? `${parentNode.filename}||${parentNode.functionName}`
+          : null,
         children: [],
         callCount: 1,
         name: functionName,
         type: "function",
       };
-  
+
       if (parentNode) {
         const parentKey = `${parentNode.filename}||${parentNode.functionName}`;
         const parentAbstract = this.originalAbstractNodeMap.get(parentKey);
-  
+
         if (!parentAbstract) {
           throw new Error(`Abstract parent node not found for ${parentKey}`);
         }
-  
+
         parentAbstract.children.push(newAbstractNode);
       } else {
         this.originalAbstractRoots.push(newAbstractNode);
       }
-  
+
       this.originalAbstractNodeMap.set(nodeKey, newAbstractNode);
     }
   }
 }
-

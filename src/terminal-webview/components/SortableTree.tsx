@@ -48,7 +48,8 @@ import type {
 import { sortableTreeKeyboardCoordinates } from "./utils/keyboardCoordinates";
 import Placeholder from "./Placeholder";
 import type { AbstractNode, DynamicCallTree } from "../dynamic-call-tree";
-import { ConsoleLog, Log } from "../../types/message";
+import type { ConsoleLog } from "../../types/message";
+import { Log } from "../../types/message";
 import LogOutput from "./LogOutput";
 
 /**
@@ -130,6 +131,10 @@ interface Props {
 
   allLogs: ConsoleLog[];
 }
+interface TreeItemList {
+  isDraggable: boolean;
+  items: TreeItems<AbstractNode>;
+}
 
 /**
  * Tree-view component.
@@ -143,15 +148,17 @@ export function SortableTree({
   originalTree,
 }: Props): JSX.Element {
   // The items as a tree.
-  const [lists, setLists] = useState<TreeItems<AbstractNode>[]>([[]]);
+  const [lists, setLists] = useState<TreeItemList[]>([
+    { isDraggable: true, items: [] },
+  ]);
 
   // Tracks the item ID that is being dragged. null if not draggin.
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [sourceListIndex, setSourceListIndex] = useState<number | null>(null);
   const flattenedLists = useMemo(
     () =>
-      lists.map((items) => {
-        const flattenedTree = flattenTree(items);
+      lists.map((list) => {
+        const flattenedTree = flattenTree(list.items);
 
         // Get a list of collapsed item IDs
         const collapsedItems = flattenedTree.reduce<UniqueIdentifier[]>(
@@ -168,14 +175,38 @@ export function SortableTree({
       }),
     [activeId, lists]
   );
-
+  const rootItemsPerLists = useMemo(
+    () =>
+      lists.map((list) =>
+        list.items.map((i) => {
+          return {
+            type: i.data?.type,
+            key: i.data?.key,
+            name:
+              i.data?.type === "function"
+                ? i.data.functionName
+                : i.data?.functionName + ":" + i.data?.lineNumber,
+          };
+        })
+      ),
+    [lists]
+  );
   const flattenedAllItemSets = useMemo(
-    () => lists.map(flattenTree).map(
-      l => new Set(l.map(i => i.data).filter(i => i?.type === 'log').map(i => i?.key).flat())
-    ),
+    () =>
+      lists
+        .map((l) => flattenTree(l.items))
+        .map(
+          (l) =>
+            new Set(
+              l
+                .map((i) => i.data)
+                .filter((i) => i?.type === "log")
+                .map((i) => i?.key)
+                .flat()
+            )
+        ),
     [activeId, lists]
   );
-
 
   // The item ID that is beneath the dragged item.
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
@@ -183,11 +214,20 @@ export function SortableTree({
   // The horizontal offset of the pointer.
   const [offsetLeft, setOffsetLeft] = useState(0);
 
+  interface UUIDHashList {
+    [key: string]: {
+      [uuid: string]: number;
+    };
+  }
+
   useEffect(() => {
     if (defaultItems.length > 0) {
-      setLists([defaultItems, []]);
+      setLists([
+        { isDraggable: true, items: defaultItems },
+        { isDraggable: true, items: [] },
+      ]);
     } else {
-      setLists([[]]);
+      setLists([{ isDraggable: true, items: [] }]);
     }
   }, [defaultItems]);
 
@@ -197,10 +237,10 @@ export function SortableTree({
   // Compute `projected` for indentation-aware drop handling
   const projected =
     sourceListIndex !== null &&
-      activeId &&
-      overId &&
-      (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
-        overId === "placeholder")
+    activeId &&
+    overId &&
+    (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
+      overId === "placeholder")
       ? getProjection(
         flattenedLists.flat(),
         activeId,
@@ -303,7 +343,9 @@ export function SortableTree({
                 depth={activeItem!.depth}
                 clone
                 data={activeItem.data}
-                childCount={getChildCount(lists[sourceListIndex], activeId) + 1}
+                childCount={
+                  getChildCount(lists[sourceListIndex].items, activeId) + 1
+                }
                 value={activeId.toString()}
                 indentationWidth={indentationWidth}
               />
@@ -315,23 +357,69 @@ export function SortableTree({
 
       <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
         {flattenedAllItemSets.map((set, setIndex) => {
-          return <>
-            <List
-              key={"log-" + setIndex}
-              style={{
-                width: "600px",
-                overflowX: "clip",
-              }}
-            >
-              {allLogs.map((log, index) => {
-                if (set.has(log.filename+"||"+log.functionName+"||"+log.lineNumber)) {
-                  return <LogOutput key={index} log={log} isOpen={false} />
-                } else {
-                  return <div></div>
-                }
-              })}
-            </List>
-          </>
+          const uuidHashList: { [functionKey: string]: string[] } = {};
+          return (
+            <>
+              <List
+                key={"log-" + setIndex}
+                style={{
+                  width: "600px",
+                  overflowX: "clip",
+                }}
+              >
+                {allLogs
+                  .sort((a, b) => a.timestamp - b.timestamp)
+                  .map((log, index) => {
+                    let uuid: string | undefined;
+                    let sequenceId: number;
+                    let name: string | undefined;
+                    rootItemsPerLists[setIndex].forEach((i) => {
+                      if (i.type === "function" && !uuid) {
+                        uuid =
+                          originalTree.getParentLogNodeMatchingFunctionKey(
+                            log.currentUUID,
+                            i.key
+                          )?.currentUUID ?? undefined;
+                      } else if (i.type === "log" && i.key === getLogKey(log)) {
+                        uuid = log.currentUUID;
+                      }
+                      if (uuid && i!.key! in uuidHashList) {
+                        sequenceId = uuidHashList[i!.key!].length;
+                        const foundIndex = uuidHashList[i!.key!].findIndex(
+                          (i) => i === uuid
+                        );
+                        if (foundIndex < 0) {
+                          uuidHashList[i!.key!] = [
+                            ...uuidHashList[i!.key!],
+                            uuid,
+                          ];
+                        } else {
+                          sequenceId = foundIndex;
+                        }
+                        name = i.name + " " + sequenceId;
+                      } else if (uuid) {
+                        sequenceId = 0;
+                        uuidHashList[i!.key!] = [uuid];
+                        name = i.name + " " + sequenceId;
+                      }
+                    });
+
+                    if (set.has(getLogKey(log))) {
+                      return (
+                        <LogOutput
+                          key={index}
+                          log={log}
+                          isOpen={false}
+                          label={name}
+                        />
+                      );
+                    } else {
+                      return <div></div>;
+                    }
+                  })}
+              </List>
+            </>
+          );
         })}
       </div>
     </>
@@ -361,6 +449,9 @@ export function SortableTree({
     setOverId(over ? over.id : null);
   }
 
+  function getLogKey(log: ConsoleLog): string {
+    return log.filename + "||" + log.functionName + "||" + log.lineNumber;
+  }
   // Fires after a draggable item is dropped.
   // This event contains information about the active draggable id
   // along with information on whether the draggable item was dropped over.
@@ -378,15 +469,13 @@ export function SortableTree({
       return;
     }
     setLists((prevLists) => {
-      const newLists = JSON.parse(
-        JSON.stringify(prevLists)
-      ) as TreeItems<AbstractNode>[];
+      const newLists = JSON.parse(JSON.stringify(prevLists)) as TreeItemList[];
       const itemToMove = getItemById(active.id);
       const clonedSourceItems: FlattenedItem<AbstractNode>[] = JSON.parse(
-        JSON.stringify(flattenTree(newLists[sourceListIndex!]))
+        JSON.stringify(flattenTree(newLists[sourceListIndex!].items))
       );
       const clonedDestinationItems: FlattenedItem<AbstractNode>[] = JSON.parse(
-        JSON.stringify(flattenTree(newLists[destinationIndex]))
+        JSON.stringify(flattenTree(newLists[destinationIndex].items))
       );
       if (!itemToMove || sourceListIndex === null) {
         return newLists;
@@ -421,7 +510,7 @@ export function SortableTree({
           );
           const newItems = buildTree(sortedItems);
 
-          newLists[destinationIndex] = newItems;
+          newLists[destinationIndex].items = newItems;
         }
       } else if (projected) {
         let { depth, parentId } = projected;
@@ -449,8 +538,8 @@ export function SortableTree({
           JSON.stringify(itemToMove)
         );
         // If moved to a different tree, remove from source and add to destination
-        newLists[sourceListIndex] = removeItem(
-          newLists[sourceListIndex],
+        newLists[sourceListIndex].items = removeItem(
+          newLists[sourceListIndex].items,
           active.id
         );
 
@@ -474,8 +563,8 @@ export function SortableTree({
           item.children.forEach((child) => {
             removeChildren(child, depthToParent + 1);
           });
-          newLists[sourceListIndex!] = removeItem(
-            newLists[sourceListIndex!],
+          newLists[sourceListIndex!].items = removeItem(
+            newLists[sourceListIndex!].items,
             item.id
           );
         }
@@ -483,20 +572,20 @@ export function SortableTree({
           removeChildren(child, 1);
         });
 
-        newLists[destinationIndex] = buildTree([
+        newLists[destinationIndex].items = buildTree([
           ...clonedDestinationItems,
           ...addedItems,
         ]);
         // for each of the list within newlist check if it has at least one item
         // if it does not, remove it
         newLists.forEach((list, index) => {
-          if (list.length === 0) {
+          if (list.items.length === 0) {
             newLists.splice(index, 1);
           }
         });
         // if after moving the item, all the lists have at least one item, add an empty list
-        if (newLists.every((list) => list.length > 0)) {
-          newLists.push([]);
+        if (newLists.every((list) => list.items.length > 0)) {
+          newLists.push({ isDraggable: true, items: [] });
         }
       }
 
@@ -521,11 +610,15 @@ export function SortableTree({
   // The user clicked the expand/collapse button.
   function handleCollapse(id: UniqueIdentifier): void {
     setLists((prevLists) =>
-      prevLists.map((items) =>
-        setProperty(items, id, "collapsed", (value) => {
-          return !value;
-        })
-      )
+      prevLists.map((list) => {
+        const newList = {
+          isDraggable: list.isDraggable,
+          items: setProperty(list.items, id, "collapsed", (value) => {
+            return !value;
+          }),
+        };
+        return newList;
+      })
     );
   }
 
