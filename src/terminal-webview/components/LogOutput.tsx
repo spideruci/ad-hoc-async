@@ -17,9 +17,10 @@ import type { ConsoleLog } from "../../types/message";
 interface Props {
   log: ConsoleLog;
   isOpen: boolean;
+  labelClick: (log: ConsoleLog) => void;
   label?: string;
 }
-export default function LogOutput({ log, isOpen, label }: Props): JSX.Element {
+export default function LogOutput({ log, isOpen, label, labelClick }: Props): JSX.Element {
   return (
     <>
       <ListItemButton sx={{ height: "30px" }}>
@@ -38,7 +39,7 @@ export default function LogOutput({ log, isOpen, label }: Props): JSX.Element {
           }
         />
 
-        <Chip style={{ fontSize: "11px" }} label={label} />
+        <Chip style={{ fontSize: "11px" }} label={label} onClick={() => labelClick(log)}/>
       </ListItemButton>
       <Collapse in={isOpen} timeout="auto" unmountOnExit>
         <Card sx={{ height: "auto" }}>

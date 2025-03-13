@@ -207,7 +207,9 @@ export function SortableTree({
         ),
     [activeId, lists]
   );
+  const clickLabel = (log: ConsoleLog, invocationUUID?: string, type?: "log" | "function") => {
 
+  };
   // The item ID that is beneath the dragged item.
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
 
@@ -373,6 +375,8 @@ export function SortableTree({
                     let uuid: string | undefined;
                     let sequenceId: number;
                     let name: string | undefined;
+                    let type: "log" | "function" | undefined;
+                    let functionKey: string | undefined;
                     rootItemsPerLists[setIndex].forEach((i) => {
                       if (i.type === "function" && !uuid) {
                         uuid =
@@ -380,30 +384,36 @@ export function SortableTree({
                             log.currentUUID,
                             i.key
                           )?.currentUUID ?? undefined;
+                        type = i.type;
+                        functionKey = i.key;
+                        name = i.name; 
                       } else if (i.type === "log" && i.key === getLogKey(log)) {
                         uuid = log.currentUUID;
-                      }
-                      if (uuid && i!.key! in uuidHashList) {
-                        sequenceId = uuidHashList[i!.key!].length;
-                        const foundIndex = uuidHashList[i!.key!].findIndex(
-                          (i) => i === uuid
-                        );
-                        if (foundIndex < 0) {
-                          uuidHashList[i!.key!] = [
-                            ...uuidHashList[i!.key!],
-                            uuid,
-                          ];
-                        } else {
-                          sequenceId = foundIndex;
-                        }
-                        name = i.name + " " + sequenceId;
-                      } else if (uuid) {
-                        sequenceId = 0;
-                        uuidHashList[i!.key!] = [uuid];
-                        name = i.name + " " + sequenceId;
+                        type = i.type;
+                        functionKey = i.key;
+                        name = i.name; 
                       }
                     });
-
+                    if (uuid && functionKey! in uuidHashList) {
+                      sequenceId = uuidHashList[functionKey!].length;
+                      const foundIndex = uuidHashList[functionKey!].findIndex(
+                        (i) => i === uuid
+                      );
+                      if (foundIndex < 0) {
+                        uuidHashList[functionKey!] = [
+                          ...uuidHashList[functionKey!],
+                          uuid,
+                        ];
+                        name = name + " " + sequenceId;
+                      } else {
+                        sequenceId = foundIndex;
+                        name = name + " " + sequenceId;
+                      }
+                    } else if (uuid) {
+                      sequenceId = 0;
+                      uuidHashList[functionKey!] = [uuid];
+                      name = name + " " + sequenceId;
+                    }
                     if (set.has(getLogKey(log))) {
                       return (
                         <LogOutput
@@ -411,6 +421,7 @@ export function SortableTree({
                           log={log}
                           isOpen={false}
                           label={name}
+                          labelClick={(log) => clickLabel(log, uuid, type)}
                         />
                       );
                     } else {

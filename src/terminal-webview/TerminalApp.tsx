@@ -1,18 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import List from "@mui/material/List";
-import ListItemText from "@mui/material/ListItemText";
-import ListItemButton from "@mui/material/ListItemButton";
-import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import ListSubheader from "@mui/material/ListSubheader";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import IconButton from "@mui/material/IconButton";
-import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
-import Collapse from "@mui/material/Collapse";
-import { Card, CardContent, Typography } from "@mui/material";
-import ReactJson from "react-json-view";
 
 import type {
   ConsoleLog,
