@@ -114,7 +114,7 @@ export class DynamicCallTree {
           functionName: currentFunctionNode.functionName,
           children: [],
           callCount: 0,
-          name: "Log at line " + log.lineNumber, // TODO: update this to a better name with actual console.log contents
+          name: log.consoleLogText, // TODO: update this to a better name with actual console.log contents
           type: "log",
           parentId: nodeKey,
           lineNumber: log.lineNumber,
@@ -249,29 +249,6 @@ export class DynamicCallTree {
     return false;
   }
 
-  findNodeByAbstractKey(key: string): LogNode | null {
-    // return LogNode based on abstracted tree's key
-    function findNodeByAbstractKeyHelper(node: LogNode, key: string): boolean {
-      const abstractKey = `${node.filename}||${node.functionName}`;
-      if (abstractKey === key) {
-        return true;
-      }
-      for (let i = 0; i < node.children.length; i++) {
-        const child = node.children[i];
-        if (findNodeByAbstractKeyHelper(child, key)) {
-          return true;
-        }
-      }
-      return false;
-    }
-    for (let i = 0; i < this.roots.length; i++) {
-      const node = this.roots[i];
-      if (findNodeByAbstractKeyHelper(node, key)) {
-        return node;
-      }
-    }
-    return null;
-  }
   // findAndRemoveSubtree is a recursive function that traverses the tree and removes the subtree with the given key
   private findAndRemoveSubtree(node: AbstractNode, subtree: AbstractNode): boolean {
     if (node === subtree) {
@@ -294,6 +271,8 @@ export class DynamicCallTree {
   public getAbstractedTrees(): AbstractNode[] {
     return this.abstractRoots;
   }
+
+      
 
   public getLogsWithinTheFunctionCall(uuid: string): Log[] {
     const node = this.nodeMap.get(uuid);

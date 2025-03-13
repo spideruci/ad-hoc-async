@@ -37,6 +37,7 @@ export type ConsoleLog = {
     logData: never[];
     logId: string;
     type: "console.log";
+    consoleLogText: string;
 };
 export type Log = ({
     type: "statement";

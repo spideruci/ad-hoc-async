@@ -152,6 +152,7 @@ export const TreeItem = forwardRef<HTMLDivElement, Props>(
         )}
         <Content
           className='Text'
+          style={{fontSize: "10px"}}
           disableSelection={disableSelection}
         >
           {data && data.name}

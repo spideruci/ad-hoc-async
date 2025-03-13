@@ -24,7 +24,6 @@ import {
 import {
   SortableContext,
   arrayMove,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -49,6 +48,8 @@ import type {
 import { sortableTreeKeyboardCoordinates } from "./utils/keyboardCoordinates";
 import Placeholder from "./Placeholder";
 import type { AbstractNode, DynamicCallTree } from "../dynamic-call-tree";
+import { ConsoleLog, Log } from "../../types/message";
+import LogOutput from "./LogOutput";
 
 /**
  * Here we configure when and how often DndContext
@@ -126,6 +127,8 @@ interface Props {
   removable?: boolean;
 
   originalTree: DynamicCallTree;
+
+  allLogs: ConsoleLog[];
 }
 
 /**
@@ -133,6 +136,7 @@ interface Props {
  */
 export function SortableTree({
   collapsible,
+  allLogs,
   defaultItems = [],
   indicator = false,
   indentationWidth = 50,
@@ -165,6 +169,14 @@ export function SortableTree({
     [activeId, lists]
   );
 
+  const flattenedAllItemSets = useMemo(
+    () => lists.map(flattenTree).map(
+      l => new Set(l.map(i => i.data).filter(i => i?.type === 'log').map(i => i?.key).flat())
+    ),
+    [activeId, lists]
+  );
+
+
   // The item ID that is beneath the dragged item.
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
 
@@ -185,10 +197,10 @@ export function SortableTree({
   // Compute `projected` for indentation-aware drop handling
   const projected =
     sourceListIndex !== null &&
-    activeId &&
-    overId &&
-    (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
-      overId === "placeholder")
+      activeId &&
+      overId &&
+      (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
+        overId === "placeholder")
       ? getProjection(
         flattenedLists.flat(),
         activeId,
@@ -220,84 +232,109 @@ export function SortableTree({
   }, [activeFlattenedItems, offsetLeft]);
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      measuring={measuring}
-      onDragStart={handleDragStart}
-      onDragMove={handleDragMove}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
-      <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
-        {flattenedLists.map((flattenedItems, listIndex) => (
-          <SortableContext
-            items={
-              flattenedItems.length > 0
-                ? flattenedItems.map(({ id }) => id)
-                : ["placeholder"]
-            }
-            strategy={verticalListSortingStrategy}
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        measuring={measuring}
+        onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
+          {flattenedLists.map((flattenedItems, listIndex) => (
+            <SortableContext
+              items={
+                flattenedItems.length > 0
+                  ? flattenedItems.map(({ id }) => id)
+                  : ["placeholder"]
+              }
+              strategy={verticalListSortingStrategy}
+            >
+              <List
+                key={listIndex}
+                style={{
+                  width: "600px",
+                  overflowX: "clip",
+                  border: "1px dashed gray",
+                  padding: "10px",
+                  minHeight: "200px",
+                }}
+              >
+                {flattenedItems.length === 0 ? (
+                  <Placeholder></Placeholder>
+                ) : (
+                  flattenedItems.map(
+                    ({ id, children, collapsed, depth, data }) => (
+                      <SortableTreeItem
+                        key={id}
+                        id={id}
+                        value={"" + id}
+                        depth={
+                          id === activeId && projected ? projected.depth : depth
+                        }
+                        data={data}
+                        indentationWidth={indentationWidth}
+                        indicator={indicator}
+                        collapsed={collapsed && children.length > 0}
+                        onCollapse={
+                          collapsible && children.length
+                            ? (): void => handleCollapse(id)
+                            : undefined
+                        }
+                      />
+                    )
+                  )
+                )}
+              </List>
+            </SortableContext>
+          ))}
+        </div>
+        {createPortal(
+          <DragOverlay
+            dropAnimation={dropAnimationConfig}
+            modifiers={indicator ? [adjustTranslate] : undefined}
           >
+            {activeId && sourceListIndex !== null && activeItem ? (
+              <SortableTreeItem
+                id={activeId}
+                depth={activeItem!.depth}
+                clone
+                data={activeItem.data}
+                childCount={getChildCount(lists[sourceListIndex], activeId) + 1}
+                value={activeId.toString()}
+                indentationWidth={indentationWidth}
+              />
+            ) : null}
+          </DragOverlay>,
+          document.body
+        )}
+      </DndContext>
+
+      <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
+        {flattenedAllItemSets.map((set, setIndex) => {
+          return <>
             <List
-              key={listIndex}
+              key={"log-" + setIndex}
               style={{
-                minWidth: "200px",
-                border: "1px dashed gray",
-                padding: "10px",
-                minHeight: "200px",
+                width: "600px",
+                overflowX: "clip",
               }}
             >
-              {flattenedItems.length === 0 ? (
-                <Placeholder></Placeholder>
-              ) : (
-                flattenedItems.map(
-                  ({ id, children, collapsed, depth, data }) => (
-                    <SortableTreeItem
-                      key={id}
-                      id={id}
-                      value={"" + id}
-                      depth={
-                        id === activeId && projected ? projected.depth : depth
-                      }
-                      data={data}
-                      indentationWidth={indentationWidth}
-                      indicator={indicator}
-                      collapsed={collapsed && children.length > 0}
-                      onCollapse={
-                        collapsible && children.length
-                          ? (): void => handleCollapse(id)
-                          : undefined
-                      }
-                    />
-                  )
-                )
-              )}
+              {allLogs.map((log, index) => {
+                if (set.has(log.filename+"||"+log.functionName+"||"+log.lineNumber)) {
+                  return <LogOutput key={index} log={log} isOpen={false} />
+                } else {
+                  return <div></div>
+                }
+              })}
             </List>
-          </SortableContext>
-        ))}
+          </>
+        })}
       </div>
-      {createPortal(
-        <DragOverlay
-          dropAnimation={dropAnimationConfig}
-          modifiers={indicator ? [adjustTranslate] : undefined}
-        >
-          {activeId && sourceListIndex !== null && activeItem ? (
-            <SortableTreeItem
-              id={activeId}
-              depth={activeItem!.depth}
-              clone
-              data={activeItem.data}
-              childCount={getChildCount(lists[sourceListIndex], activeId) + 1}
-              value={activeId.toString()}
-              indentationWidth={indentationWidth}
-            />
-          ) : null}
-        </DragOverlay>,
-        document.body
-      )}
-    </DndContext>
+    </>
   );
 
   // Fires when a drag event that meets the activation constraints

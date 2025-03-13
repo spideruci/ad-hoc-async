@@ -5,12 +5,14 @@ import React, { useEffect, useState } from "react";
 import type { DynamicCallTree } from "./dynamic-call-tree";
 import { SortableTree } from "./components/SortableTree";
 import convertAbstractNodeToTreeItem from "./components/utils/convertAbstractNodeToTreeItem";
+import { ConsoleLog } from "../types/message";
 
 export interface CallTreesProps {
   dynamicCallTree: DynamicCallTree;
+  logs: ConsoleLog[];
 }
 // use SortableTree.tsx to render the call trees
-const CallTrees: React.FC<CallTreesProps> = ({ dynamicCallTree }) => {
+const CallTrees: React.FC<CallTreesProps> = ({ dynamicCallTree, logs }) => {
 
   const [abstractRoots, setAbstractRoots] = useState(
     dynamicCallTree.getAbstractedTrees().map(convertAbstractNodeToTreeItem)
@@ -23,8 +25,7 @@ const CallTrees: React.FC<CallTreesProps> = ({ dynamicCallTree }) => {
   return (
     <div style={{ display: "flex" }}>
       <div>
-        <h3>Original Tree</h3>
-        <SortableTree defaultItems={abstractRoots} collapsible originalTree={dynamicCallTree}/>
+        <SortableTree allLogs={logs} defaultItems={abstractRoots} collapsible originalTree={dynamicCallTree}/>
       </div>
     </div>
   );
