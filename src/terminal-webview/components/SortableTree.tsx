@@ -131,9 +131,13 @@ interface Props {
 
   allLogs: ConsoleLog[];
 }
+
 interface TreeItemList {
   isDraggable: boolean;
   items: TreeItems<AbstractNode>;
+  invocationUUID?: string;
+  type?: "log" | "function";
+  lineNumber?: number;
 }
 
 /**
@@ -207,8 +211,21 @@ export function SortableTree({
         ),
     [activeId, lists]
   );
-  const clickLabel = (log: ConsoleLog, invocationUUID?: string, type?: "log" | "function") => {
-
+  const clickLabel = (log: ConsoleLog, listIndex: number, invocationUUID?: string, type?: "log" | "function") => {
+    if (!invocationUUID || !type) return;
+    // we need to add a new list next to the listIndex
+    setLists((prevLists) => {
+      const newLists = JSON.parse(JSON.stringify(prevLists));
+      const newItem = JSON.parse(JSON.stringify(prevLists[listIndex])) as TreeItemList;
+      newItem.isDraggable = false;
+      newLists.splice(listIndex + 1, 0, newItem);
+      newItem.invocationUUID = invocationUUID;
+      newItem.type = type;
+      if (type === "log") {
+        newItem.lineNumber = log.lineNumber;
+      }
+      return newLists;
+    });
   };
   // The item ID that is beneath the dragged item.
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
@@ -239,10 +256,10 @@ export function SortableTree({
   // Compute `projected` for indentation-aware drop handling
   const projected =
     sourceListIndex !== null &&
-    activeId &&
-    overId &&
-    (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
-      overId === "placeholder")
+      activeId &&
+      overId &&
+      (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
+        overId === "placeholder")
       ? getProjection(
         flattenedLists.flat(),
         activeId,
@@ -287,7 +304,9 @@ export function SortableTree({
       >
         <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
           {flattenedLists.map((flattenedItems, listIndex) => (
+
             <SortableContext
+              disabled={!lists[listIndex].isDraggable}
               items={
                 flattenedItems.length > 0
                   ? flattenedItems.map(({ id }) => id)
@@ -309,8 +328,8 @@ export function SortableTree({
                   <Placeholder></Placeholder>
                 ) : (
                   flattenedItems.map(
-                    ({ id, children, collapsed, depth, data }) => (
-                      <SortableTreeItem
+                    ({ id, children, collapsed, depth, data }) => {
+                      return <SortableTreeItem
                         key={id}
                         id={id}
                         value={"" + id}
@@ -327,9 +346,10 @@ export function SortableTree({
                             : undefined
                         }
                       />
-                    )
+                    }
                   )
-                )}
+                )
+                }
               </List>
             </SortableContext>
           ))}
@@ -386,12 +406,12 @@ export function SortableTree({
                           )?.currentUUID ?? undefined;
                         type = i.type;
                         functionKey = i.key;
-                        name = i.name; 
+                        name = i.name;
                       } else if (i.type === "log" && i.key === getLogKey(log)) {
                         uuid = log.currentUUID;
                         type = i.type;
                         functionKey = i.key;
-                        name = i.name; 
+                        name = i.name;
                       }
                     });
                     if (uuid && functionKey! in uuidHashList) {
@@ -414,16 +434,31 @@ export function SortableTree({
                       uuidHashList[functionKey!] = [uuid];
                       name = name + " " + sequenceId;
                     }
-                    if (set.has(getLogKey(log))) {
+                    if (lists[setIndex].isDraggable && set.has(getLogKey(log))) {
                       return (
                         <LogOutput
                           key={index}
                           log={log}
                           isOpen={false}
                           label={name}
-                          labelClick={(log) => clickLabel(log, uuid, type)}
+                          labelClick={(log) => {
+                            if (lists[setIndex].isDraggable) {
+                              clickLabel(log, setIndex, uuid, type);
+                            }
+                          }}
                         />
                       );
+                    } else if (!lists[setIndex].isDraggable &&
+                      (lists[setIndex].type === "function" && lists[setIndex].invocationUUID === uuid) ||
+                      (lists[setIndex].type === "log" && lists[setIndex].invocationUUID === uuid) && lists[setIndex].lineNumber === log.lineNumber
+                    ) {
+                      return <LogOutput
+                        key={index}
+                        log={log}
+                        isOpen={false}
+                        label={name}
+                        labelClick={(log) => {}}
+                      />
                     } else {
                       return <div></div>;
                     }
