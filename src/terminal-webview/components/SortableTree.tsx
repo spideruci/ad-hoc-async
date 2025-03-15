@@ -211,8 +211,9 @@ export function SortableTree({
         ),
     [activeId, lists]
   );
+
   const clickLabel = (log: ConsoleLog, listIndex: number, invocationUUID?: string, type?: "log" | "function") => {
-    if (!invocationUUID || !type) return;
+    if (!invocationUUID || !type) {return;}
     // we need to add a new list next to the listIndex
     setLists((prevLists) => {
       const newLists = JSON.parse(JSON.stringify(prevLists));
@@ -232,12 +233,6 @@ export function SortableTree({
 
   // The horizontal offset of the pointer.
   const [offsetLeft, setOffsetLeft] = useState(0);
-
-  interface UUIDHashList {
-    [key: string]: {
-      [uuid: string]: number;
-    };
-  }
 
   useEffect(() => {
     if (defaultItems.length > 0) {
@@ -329,9 +324,17 @@ export function SortableTree({
                 ) : (
                   flattenedItems.map(
                     ({ id, children, collapsed, depth, data }) => {
+                      let key = String(id);
+                      if (!lists[listIndex].isDraggable) {
+                        if (lists[listIndex].type === "function") {
+                          key = key + lists[listIndex].invocationUUID;
+                        } else {
+                          key = key + lists[listIndex].invocationUUID + ":" + lists[listIndex].lineNumber;
+                        }
+                      }
                       return <SortableTreeItem
-                        key={id}
-                        id={id}
+                        key={key}
+                        id={key}
                         value={"" + id}
                         depth={
                           id === activeId && projected ? projected.depth : depth
@@ -345,7 +348,7 @@ export function SortableTree({
                             ? (): void => handleCollapse(id)
                             : undefined
                         }
-                      />
+                      />;
                     }
                   )
                 )
@@ -458,7 +461,7 @@ export function SortableTree({
                         isOpen={false}
                         label={name}
                         labelClick={(log) => {}}
-                      />
+                      />;
                     } else {
                       return <div></div>;
                     }
@@ -478,7 +481,6 @@ export function SortableTree({
     setActiveId(activeId);
     setOverId(activeId);
     setSourceListIndex(findListIndex(activeId));
-
     document.body.style.setProperty("cursor", "grabbing");
   }
 
@@ -658,7 +660,7 @@ export function SortableTree({
     setLists((prevLists) =>
       prevLists.map((list) => {
         const newList = {
-          isDraggable: list.isDraggable,
+          ...list,
           items: setProperty(list.items, id, "collapsed", (value) => {
             return !value;
           }),
