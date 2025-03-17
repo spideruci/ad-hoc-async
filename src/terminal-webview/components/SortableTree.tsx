@@ -453,7 +453,10 @@ export function SortableTree({
                       );
                     } else if (!lists[setIndex].isDraggable &&
                       (lists[setIndex].type === "function" && lists[setIndex].invocationUUID === uuid) ||
-                      (lists[setIndex].type === "log" && lists[setIndex].invocationUUID === uuid) && lists[setIndex].lineNumber === log.lineNumber
+                      (lists[setIndex].type === "log" 
+                        && lists[setIndex].invocationUUID === uuid 
+                        && lists[setIndex].lineNumber === log.lineNumber
+                      )
                     ) {
                       return <LogOutput
                         key={index}

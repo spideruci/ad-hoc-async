@@ -39,7 +39,7 @@ export default function LogOutput({ log, isOpen, label, labelClick }: Props): JS
           }
         />
 
-        <Chip style={{ fontSize: "11px" }} label={label} onClick={() => labelClick(log)}/>
+        <Chip size="small"  style={{ fontSize: "11px" }} label={label} onClick={() => labelClick(log)}/>
       </ListItemButton>
       <Collapse in={isOpen} timeout="auto" unmountOnExit>
         <Card sx={{ height: "auto" }}>
