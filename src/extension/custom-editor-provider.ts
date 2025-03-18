@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { parse } from "@typescript-eslint/typescript-estree";
 import { getNonce } from "./utils/utils";
-import type { Log, ToVSCodeMessage } from "../types/message";
+import type { ConsoleLog, Log, ToVSCodeMessage } from "../types/message";
 
 export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider {
   private webviewPanel: vscode.WebviewPanel | null = null;
@@ -10,6 +10,12 @@ export class CustomTextEditorProvider implements vscode.CustomTextEditorProvider
   public handleLogBroadcast(log: Log): void {
     if (this.webviewPanel) {
       this.webviewPanel.webview.postMessage({ command: "log", log });
+    }
+  }
+
+  public handleDraggedLogBroadcast(log: ConsoleLog): void {
+    if (this.webviewPanel) {
+      this.webviewPanel.webview.postMessage({ command: "draggedLog", log });
     }
   }
 

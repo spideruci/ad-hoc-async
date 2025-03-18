@@ -130,6 +130,8 @@ interface Props {
   originalTree: DynamicCallTree;
 
   allLogs: ConsoleLog[];
+
+  onLogDragStart: (log: ConsoleLog) => void;
 }
 
 interface TreeItemList {
@@ -150,6 +152,7 @@ export function SortableTree({
   indicator = false,
   indentationWidth = 50,
   originalTree,
+  onLogDragStart,
 }: Props): JSX.Element {
   // The items as a tree.
   const [lists, setLists] = useState<TreeItemList[]>([
@@ -449,6 +452,9 @@ export function SortableTree({
                               clickLabel(log, setIndex, uuid, type);
                             }
                           }}
+                          onDragStart={(log: ConsoleLog) => {
+                            onLogDragStart(log);
+                          }}
                         />
                       );
                     } else if (!lists[setIndex].isDraggable &&
@@ -464,6 +470,9 @@ export function SortableTree({
                         isOpen={false}
                         label={name}
                         labelClick={(log) => {}}
+                        onDragStart={(log: ConsoleLog) => {
+                          onLogDragStart(log);
+                        }}
                       />;
                     } else {
                       return <div></div>;
