@@ -218,6 +218,9 @@ export function SortableTree({
     setLists((prevLists) => {
       const newLists = JSON.parse(JSON.stringify(prevLists));
       const newItem = JSON.parse(JSON.stringify(prevLists[listIndex])) as TreeItemList;
+      newItem.items.forEach(i => {
+        i.id = i.id + invocationUUID;
+      });
       newItem.isDraggable = false;
       newLists.splice(listIndex + 1, 0, newItem);
       newItem.invocationUUID = invocationUUID;
@@ -336,6 +339,7 @@ export function SortableTree({
                         key={key}
                         id={key}
                         value={"" + id}
+                        isDraggable={lists[listIndex].isDraggable}
                         depth={
                           id === activeId && projected ? projected.depth : depth
                         }
@@ -364,6 +368,7 @@ export function SortableTree({
           >
             {activeId && sourceListIndex !== null && activeItem ? (
               <SortableTreeItem
+                isDraggable={true}
                 id={activeId}
                 depth={activeItem!.depth}
                 clone

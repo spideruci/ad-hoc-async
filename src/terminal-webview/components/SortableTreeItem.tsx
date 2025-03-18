@@ -22,6 +22,7 @@ interface Props extends TreeItemProps {
    * Unique identifier for the item that we're representing here.
    */
   id: UniqueIdentifier;
+  isDraggable: boolean;
   data?: AbstractNode;
 }
 
@@ -31,7 +32,7 @@ interface Props extends TreeItemProps {
  * Uses the `useSortable` dnd-kit hook to create the item and renders
  * the TreeItem with provided data.
  */
-export function SortableTreeItem({ id, depth, data, ...props }: Props) {
+export function SortableTreeItem({ id, isDraggable, depth, data, ...props }: Props) {
   const {
     attributes,
     isDragging,
@@ -56,6 +57,7 @@ export function SortableTreeItem({ id, depth, data, ...props }: Props) {
       ref={setDraggableNodeRef}
       wrapperRef={setDroppableNodeRef}
       style={style}
+      isDraggable={isDraggable}
       depth={depth}
       ghost={isDragging}
       data={data}

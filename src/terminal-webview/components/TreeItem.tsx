@@ -15,7 +15,7 @@ import type { AbstractNode } from "../dynamic-call-tree";
  * Properties expected by the TreeItem component.
  */
 export interface Props extends Omit<HTMLAttributes<HTMLLIElement>, "id"> {
-
+  isDraggable: boolean;
   data?: AbstractNode;
   /**
    * The number of children for this item.
@@ -141,7 +141,7 @@ export const TreeItem = forwardRef<HTMLDivElement, Props>(
         ref={ref}
         style={style}
       >
-        <Handle {...handleProps} />
+        {props.isDraggable && <Handle {...handleProps} />}
         {onCollapse && (
           <Action
             onClick={onCollapse}
