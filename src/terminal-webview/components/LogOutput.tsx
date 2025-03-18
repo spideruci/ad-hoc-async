@@ -19,10 +19,12 @@ interface Props {
   isOpen: boolean;
   labelClick: (log: ConsoleLog) => void;
   label?: string;
+  onDragStart: (log: ConsoleLog) => void;
 }
-export default function LogOutput({ log, isOpen, label, labelClick }: Props): JSX.Element {
+export default function LogOutput({ log, isOpen, label, labelClick, onDragStart }: Props): JSX.Element {
+
   return (
-    <>
+    <div draggable={true} onDragStart={() => onDragStart(log)}>
       <ListItemButton sx={{ height: "30px" }}>
         <ListItemText
           primary={
@@ -65,6 +67,6 @@ export default function LogOutput({ log, isOpen, label, labelClick }: Props): JS
         </Card>
       </Collapse>
       <Divider />
-    </>
+    </div>
   );
 }

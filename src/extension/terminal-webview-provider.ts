@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { getNonce } from "./utils/utils";
-import type { Log } from "../types/message";
+import type { Log, ToVSCodeMessage } from "../types/message";
 
 export class TerminalWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "co-debugger.sidebarView";
@@ -24,6 +24,17 @@ export class TerminalWebviewProvider implements vscode.WebviewViewProvider {
       enableScripts: true,
     };
     webviewView.webview.html = this.getHtml(webviewView.webview);
+
+    const draggedLogListener = webviewView.webview.onDidReceiveMessage(
+      async(message: ToVSCodeMessage) => {
+        if (message.command === "draggedLog") {
+          const log = message.log;
+          vscode.commands.executeCommand("co-debugger.broadcaseDraggedLog", log);
+        }
+      }
+    );
+
+    this.context.subscriptions.push(draggedLogListener);
   }
 
   private getHtml(webview: vscode.Webview): string {
