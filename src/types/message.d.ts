@@ -10,7 +10,7 @@ export type ToVSCodeMessage = {
 } | { command: "requestAST" } | { command: "ready" } | {
     command: "logHover",
     logId: string,
-};
+} | { command: "draggedLog", log: ConsoleLog };
 
 export type ToEditorMessage = {
     command: "log";
@@ -26,7 +26,7 @@ export type ToEditorMessage = {
     command: "load";
     text: string;
     language: string;
-};
+} | { command: "draggedLog", log: ConsoleLog };
 
 export type ConsoleLog = {
     filename: string;

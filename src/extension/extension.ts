@@ -37,4 +37,8 @@ export function activate(context: vscode.ExtensionContext): void {
     terminalProvider.handleLogBroadcast(log);
     customEditorProvider.handleLogBroadcast(log);
   });
+
+  vscode.commands.registerCommand("co-debugger.broadcaseDraggedLog", (log) => {
+    customEditorProvider.handleDraggedLogBroadcast(log);
+  });
 }

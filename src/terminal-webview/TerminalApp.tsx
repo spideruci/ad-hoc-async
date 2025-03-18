@@ -51,7 +51,9 @@ const TerminalApp = (): JSX.Element => {
 
   return (
     <ThemeProvider theme={darkTheme}>
-      <CallTrees dynamicCallTree={callTree} logs={logs}/>
+      <CallTrees dynamicCallTree={callTree} logs={logs} onLogDragStart={(log) => {
+        vscode.postMessage({ command: "draggedLog", log });
+      }}/>
       <CssBaseline />
     </ThemeProvider>
   );
