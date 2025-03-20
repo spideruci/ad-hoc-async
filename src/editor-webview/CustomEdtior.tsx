@@ -41,11 +41,7 @@ const CustomEditor: React.FC = () => {
   const [tempCacheDraggedLog, updateTempCacheDraggedLog] = useState<ConsoleLog>();
   const { setRange } = useRange();
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  };
-
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleMouseOver = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
     if (tempCacheDraggedLog) {
       addDraggedLog((prevLogs) => [...prevLogs, tempCacheDraggedLog]);
@@ -162,8 +158,7 @@ const CustomEditor: React.FC = () => {
   return (
     <div 
       style={{ height: "100vh", width: "100%", position: "relative"}}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
+      onMouseOver={handleMouseOver}
     >
       <Editor
         height="100%"
