@@ -12,6 +12,7 @@ import {
 import ReactJson from "react-json-view";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
+import PushPinIcon from "@mui/icons-material/PushPin"; // Import the pin icon
 import type { ConsoleLog } from "../../types/message";
 
 interface Props {
@@ -20,8 +21,10 @@ interface Props {
   labelClick: (log: ConsoleLog) => void;
   label?: string;
   onDragStart: (log: ConsoleLog) => void;
+  onPinClick?: (labelName: string) => void;
+  pinColor?: string;
 }
-export default function LogOutput({ log, isOpen, label, labelClick, onDragStart }: Props): JSX.Element {
+export default function LogOutput({ log, isOpen, label, labelClick, onDragStart, onPinClick, pinColor }: Props): JSX.Element {
 
   return (
     <div draggable={true} onDragStart={() => onDragStart(log)}>
@@ -42,6 +45,11 @@ export default function LogOutput({ log, isOpen, label, labelClick, onDragStart 
         />
 
         <Chip size="small"  style={{ fontSize: "11px" }} label={label} onClick={() => labelClick(log)}/>
+        <IconButton size="small" onClick={() => {
+          onPinClick && label && onPinClick(label);
+        }}>
+          <PushPinIcon fontSize="small" style={{ color: pinColor ?? "#f8f8f8" }}/>
+        </IconButton>
       </ListItemButton>
       <Collapse in={isOpen} timeout="auto" unmountOnExit>
         <Card sx={{ height: "auto" }}>
