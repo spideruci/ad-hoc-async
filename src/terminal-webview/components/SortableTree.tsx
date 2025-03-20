@@ -291,6 +291,32 @@ export function SortableTree({
     };
   }, [activeFlattenedItems, offsetLeft]);
 
+  // Map to store label name and color pairs
+  const [labelColorMap, setLabelColorMap] = useState<Map<string, string>>(new Map());
+
+  // Function to generate a random color
+  const generateRandomColor = () => {
+    const letters = "0123456789ABCDEF";
+    let color = "#";
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  };
+
+  // Function to handle pin click
+  const handlePinClick = (labelName: string) => {
+    setLabelColorMap((prevMap) => {
+      const newMap = new Map(prevMap);
+      if (newMap.has(labelName)) {
+        newMap.delete(labelName);
+      } else {
+        newMap.set(labelName, generateRandomColor());
+      }
+      return newMap;
+    });
+  };
+
   return (
     <>
       <DndContext
@@ -445,6 +471,9 @@ export function SortableTree({
                       uuidHashList[functionKey!] = [uuid];
                       name = name + " " + sequenceId;
                     }
+
+                    const pinColor = labelColorMap.get(name ?? "") ?? "#f8f8f8";
+
                     if (lists[setIndex].isDraggable && set.has(getLogKey(log))) {
                       return (
                         <LogOutput
@@ -460,6 +489,8 @@ export function SortableTree({
                           onDragStart={(log: ConsoleLog) => {
                             onLogDragStart(log);
                           }}
+                          onPinClick={handlePinClick}
+                          pinColor={pinColor}
                         />
                       );
                     } else if (!lists[setIndex].isDraggable &&
@@ -478,6 +509,8 @@ export function SortableTree({
                         onDragStart={(log: ConsoleLog) => {
                           onLogDragStart(log);
                         }}
+                        onPinClick={handlePinClick}
+                        pinColor={pinColor}
                       />;
                     } else {
                       return <div></div>;
