@@ -153,10 +153,19 @@ export const TreeItem = forwardRef<HTMLDivElement, Props>(
           style={{ fontSize: "10px" }}
           disableSelection={disableSelection}
         >
-          {data &&
-            `${data.lineNumber ? `line number: ${data.lineNumber} | ` : ""}${
-              data.name
-            }`}
+          {data && (
+            <>
+              {data.type === "log" && (
+                <div className="icon icon-console">c</div>
+              )}
+              {data.type === "function" && (
+                <div className="icon icon-function">f</div>
+              )}
+              {`${data.lineNumber ? `line number: ${data.lineNumber} | ` : ""}${
+                data.name
+              }`}
+            </>
+          )}
         </Content>
         {clone && childCount && childCount > 1 ? (
           <Badge>{childCount}</Badge>
