@@ -10,12 +10,10 @@ import { Content } from "./Content";
 import { Badge } from "./Badge";
 import type { AbstractNode } from "../dynamic-call-tree";
 
-
 /**
  * Properties expected by the TreeItem component.
  */
 export interface Props extends Omit<HTMLAttributes<HTMLLIElement>, "id"> {
-
   data?: AbstractNode;
   /**
    * The number of children for this item.
@@ -91,11 +89,10 @@ export interface Props extends Omit<HTMLAttributes<HTMLLIElement>, "id"> {
   wrapperRef?(node: HTMLLIElement): void;
 }
 
-
 /**
  * A dumb component for representing an item based on the
  * properties it receives.
- * 
+ *
  * It is used both to render items in the tree as well as
  * the item that is being dragged.
  */
@@ -151,11 +148,14 @@ export const TreeItem = forwardRef<HTMLDivElement, Props>(
           </Action>
         )}
         <Content
-          className='Text'
-          style={{fontSize: "10px"}}
+          className="Text"
+          style={{ fontSize: "10px" }}
           disableSelection={disableSelection}
         >
-          {data && data.name}
+          {data &&
+            `${data.lineNumber ? `line number: ${data.lineNumber} | ` : ""}${
+              data.name
+            }`}
         </Content>
         {clone && childCount && childCount > 1 ? (
           <Badge>{childCount}</Badge>
