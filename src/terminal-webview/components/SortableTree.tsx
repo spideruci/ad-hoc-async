@@ -311,6 +311,11 @@ export function SortableTree({
     };
   }, [activeFlattenedItems, offsetLeft]);
 
+  // Map to store label name and color pairs that have ever occurred
+  const [everOccurredLabelColorMap, setEverOccurredLabelColorMap] = useState<
+    Map<string, string>
+  >(new Map());
+
   // Map to store label name and color pairs
   const [labelColorMap, setLabelColorMap] = useState<Map<string, string>>(
     new Map()
@@ -333,7 +338,16 @@ export function SortableTree({
       if (newMap.has(labelName)) {
         newMap.delete(labelName);
       } else {
-        newMap.set(labelName, generateRandomColor());
+        let color = everOccurredLabelColorMap.get(labelName);
+        if (!color) {
+          color = generateRandomColor();
+          setEverOccurredLabelColorMap((prevEverMap) => {
+            const newEverMap = new Map(prevEverMap);
+            newEverMap.set(labelName, color!);
+            return newEverMap;
+          });
+        }
+        newMap.set(labelName, color);
       }
       return newMap;
     });
