@@ -158,7 +158,7 @@ export function SortableTree({
   const [lists, setLists] = useState<TreeItemList[]>([
     { isDraggable: true, items: [] },
   ]);
-
+  const [splittedIDSet, setSplittedIdSet] = useState<Set<string>>(new Set());
   // Tracks the item ID that is being dragged. null if not draggin.
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [sourceListIndex, setSourceListIndex] = useState<number | null>(null);
@@ -215,13 +215,29 @@ export function SortableTree({
     [activeId, lists]
   );
 
-  const clickLabel = (log: ConsoleLog, listIndex: number, invocationUUID?: string, type?: "log" | "function") => {
-    if (!invocationUUID || !type) {return;}
+  const clickLabel = (
+    log: ConsoleLog,
+    listIndex: number,
+    invocationUUID?: string,
+    type?: "log" | "function"
+  ) => {
+    if (!invocationUUID || !type) {
+      return;
+    }
     // we need to add a new list next to the listIndex
+    if (type === "log") {
+      setSplittedIdSet(
+        (prevSet) => new Set([...prevSet, invocationUUID + log.lineNumber])
+      );
+    } else {
+      setSplittedIdSet((prevSet) => new Set([...prevSet, invocationUUID]));
+    }
     setLists((prevLists) => {
       const newLists = JSON.parse(JSON.stringify(prevLists));
-      const newItem = JSON.parse(JSON.stringify(prevLists[listIndex])) as TreeItemList;
-      newItem.items.forEach(i => {
+      const newItem = JSON.parse(
+        JSON.stringify(prevLists[listIndex])
+      ) as TreeItemList;
+      newItem.items.forEach((i) => {
         i.id = i.id + invocationUUID;
       });
       newItem.isDraggable = false;
@@ -257,10 +273,10 @@ export function SortableTree({
   // Compute `projected` for indentation-aware drop handling
   const projected =
     sourceListIndex !== null &&
-      activeId &&
-      overId &&
-      (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
-        overId === "placeholder")
+    activeId &&
+    overId &&
+    (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
+      overId === "placeholder")
       ? getProjection(
         flattenedLists.flat(),
         activeId,
@@ -331,7 +347,6 @@ export function SortableTree({
       >
         <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
           {flattenedLists.map((flattenedItems, listIndex) => (
-
             <SortableContext
               disabled={!lists[listIndex].isDraggable}
               items={
@@ -361,31 +376,38 @@ export function SortableTree({
                         if (lists[listIndex].type === "function") {
                           key = key + lists[listIndex].invocationUUID;
                         } else {
-                          key = key + lists[listIndex].invocationUUID + ":" + lists[listIndex].lineNumber;
+                          key =
+                            key +
+                            lists[listIndex].invocationUUID +
+                            ":" +
+                            lists[listIndex].lineNumber;
                         }
                       }
-                      return <SortableTreeItem
-                        key={key}
-                        id={key}
-                        value={"" + id}
-                        isDraggable={lists[listIndex].isDraggable}
-                        depth={
-                          id === activeId && projected ? projected.depth : depth
-                        }
-                        data={data}
-                        indentationWidth={indentationWidth}
-                        indicator={indicator}
-                        collapsed={collapsed && children.length > 0}
-                        onCollapse={
-                          collapsible && children.length
-                            ? (): void => handleCollapse(id)
-                            : undefined
-                        }
-                      />;
+                      return (
+                        <SortableTreeItem
+                          key={key}
+                          id={key}
+                          value={"" + id}
+                          isDraggable={lists[listIndex].isDraggable}
+                          depth={
+                            id === activeId && projected
+                              ? projected.depth
+                              : depth
+                          }
+                          data={data}
+                          indentationWidth={indentationWidth}
+                          indicator={indicator}
+                          collapsed={collapsed && children.length > 0}
+                          onCollapse={
+                            collapsible && children.length
+                              ? (): void => handleCollapse(id)
+                              : undefined
+                          }
+                        />
+                      );
                     }
                   )
-                )
-                }
+                )}
               </List>
             </SortableContext>
           ))}
@@ -471,10 +493,13 @@ export function SortableTree({
                       uuidHashList[functionKey!] = [uuid];
                       name = name + " " + sequenceId;
                     }
-
                     const pinColor = labelColorMap.get(name ?? "") ?? "#f8f8f8";
-
-                    if (lists[setIndex].isDraggable && set.has(getLogKey(log))) {
+                    if (
+                      lists[setIndex].isDraggable &&
+                      set.has(getLogKey(log)) &&
+                      !splittedIDSet.has(uuid! + log.lineNumber) &&
+                      !splittedIDSet.has(uuid!)
+                    ) {
                       return (
                         <LogOutput
                           key={index}
@@ -493,19 +518,19 @@ export function SortableTree({
                           pinColor={pinColor}
                         />
                       );
-                    } else if (!lists[setIndex].isDraggable &&
-                      (lists[setIndex].type === "function" && lists[setIndex].invocationUUID === uuid) ||
-                      (lists[setIndex].type === "log" 
-                        && lists[setIndex].invocationUUID === uuid 
-                        && lists[setIndex].lineNumber === log.lineNumber
-                      )
+                    } else if (
+                      (!lists[setIndex].isDraggable &&
+                        lists[setIndex].type === "function" &&
+                        lists[setIndex].invocationUUID === uuid) ||
+                      (lists[setIndex].type === "log" &&
+                        lists[setIndex].invocationUUID === uuid &&
+                        lists[setIndex].lineNumber === log.lineNumber)
                     ) {
                       return <LogOutput
                         key={index}
                         log={log}
                         isOpen={false}
                         label={name}
-                        labelClick={(log) => {}}
                         onDragStart={(log: ConsoleLog) => {
                           onLogDragStart(log);
                         }}
