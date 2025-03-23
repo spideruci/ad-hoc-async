@@ -1,5 +1,8 @@
+/* eslint-disable indent */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Switch from "@mui/material/Switch";
+import FormControlLabel from "@mui/material/FormControlLabel";
 
 import type {
   DragStartEvent,
@@ -162,6 +165,7 @@ export function SortableTree({
   // Tracks the item ID that is being dragged. null if not draggin.
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [sourceListIndex, setSourceListIndex] = useState<number | null>(null);
+  const [gatherToTop, setGatherToTop] = useState(false); // State to control the visibility of the div
   const flattenedLists = useMemo(
     () =>
       lists.map((list) => {
@@ -278,12 +282,12 @@ export function SortableTree({
     (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
       overId === "placeholder")
       ? getProjection(
-        flattenedLists.flat(),
-        activeId,
-        overId,
-        offsetLeft,
-        indentationWidth
-      )
+          flattenedLists.flat(),
+          activeId,
+          overId,
+          offsetLeft,
+          indentationWidth
+        )
       : null;
 
   const sensorContext: SensorContext<AbstractNode> = useRef({
@@ -308,7 +312,9 @@ export function SortableTree({
   }, [activeFlattenedItems, offsetLeft]);
 
   // Map to store label name and color pairs
-  const [labelColorMap, setLabelColorMap] = useState<Map<string, string>>(new Map());
+  const [labelColorMap, setLabelColorMap] = useState<Map<string, string>>(
+    new Map()
+  );
 
   // Function to generate a random color
   const generateRandomColor = () => {
@@ -435,7 +441,19 @@ export function SortableTree({
           document.body
         )}
       </DndContext>
-
+      <FormControlLabel
+        control={
+          <Switch
+            checked={gatherToTop}
+            onChange={() => setGatherToTop(!gatherToTop)}
+            inputProps={{ "aria-label": "Show Div" }}
+          />
+        }
+        label="Gather to the top"
+        style={{
+          color: "#f0f0f0",
+        }}
+      />
       <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
         {flattenedAllItemSets.map((set, setIndex) => {
           const uuidHashList: { [functionKey: string]: string[] } = {};
@@ -526,19 +544,25 @@ export function SortableTree({
                         lists[setIndex].invocationUUID === uuid &&
                         lists[setIndex].lineNumber === log.lineNumber)
                     ) {
-                      return <LogOutput
-                        key={index}
-                        log={log}
-                        isOpen={false}
-                        label={name}
-                        onDragStart={(log: ConsoleLog) => {
-                          onLogDragStart(log);
-                        }}
-                        onPinClick={handlePinClick}
-                        pinColor={pinColor}
-                      />;
+                      return (
+                        <LogOutput
+                          key={index}
+                          log={log}
+                          isOpen={false}
+                          label={name}
+                          onDragStart={(log: ConsoleLog) => {
+                            onLogDragStart(log);
+                          }}
+                          onPinClick={handlePinClick}
+                          pinColor={pinColor}
+                        />
+                      );
                     } else {
-                      return <div></div>;
+                      return (
+                        <div
+                          style={{ height: !gatherToTop ? "30px" : "0px" }}
+                        ></div>
+                      );
                     }
                   })}
               </List>

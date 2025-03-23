@@ -32,7 +32,11 @@ export default function LogOutput({
   pinColor,
 }: Props): JSX.Element {
   return (
-    <div draggable={true} onDragStart={() => onDragStart(log)}>
+    <div
+      draggable={true}
+      onDragStart={() => onDragStart(log)}
+      style={{ height: "30px" }}
+    >
       <ListItemButton sx={{ height: "30px" }}>
         <ListItemText
           primary={
