@@ -134,6 +134,8 @@ interface Props {
 
   allLogs: ConsoleLog[];
 
+  searchQuery: string;
+
   onLogDragStart: (log: ConsoleLog) => void;
 }
 
@@ -154,6 +156,7 @@ export function SortableTree({
   defaultItems = [],
   indicator = false,
   indentationWidth = 50,
+  searchQuery,
   originalTree,
   onLogDragStart,
 }: Props): JSX.Element {
@@ -537,6 +540,7 @@ export function SortableTree({
                           key={index}
                           log={log}
                           isOpen={false}
+                          searchQuery={searchQuery}
                           label={name}
                           labelClick={(log) => {
                             if (lists[setIndex].isDraggable) {
@@ -562,6 +566,7 @@ export function SortableTree({
                         <LogOutput
                           key={index}
                           log={log}
+                          searchQuery={searchQuery}
                           isOpen={false}
                           label={name}
                           onDragStart={(log: ConsoleLog) => {

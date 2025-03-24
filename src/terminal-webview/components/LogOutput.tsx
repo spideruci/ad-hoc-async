@@ -18,13 +18,37 @@ interface Props {
   isOpen: boolean;
   labelClick?: (log: ConsoleLog) => void;
   label?: string;
+  searchQuery?: string;
   onDragStart: (log: ConsoleLog) => void;
   onPinClick?: (labelName: string) => void;
   pinColor?: string;
 }
+function highlightWithContext(text: string, query?: string): JSX.Element | string {
+  if (!query || !text.toLowerCase().includes(query.toLowerCase())) {
+    return text.substring(0, 50);
+  }
+
+  const index = text.toLowerCase().indexOf(query.toLowerCase());
+  const start = Math.max(index - 25, 0);
+  const end = Math.min(index + query.length + 25, text.length);
+  const before = text.substring(start, index);
+  const match = text.substring(index, index + query.length);
+  const after = text.substring(index + query.length, end);
+  return (
+    <>
+      {start > 0 && "..."}
+      {before}
+      <mark style={{ backgroundColor: "yellow" }}>{match}</mark>
+      {after}
+      {end < text.length && "..."}
+    </>
+  );
+}
+
 export default function LogOutput({
   log,
   isOpen,
+  searchQuery,
   label,
   labelClick,
   onDragStart,
@@ -47,12 +71,11 @@ export default function LogOutput({
                   fontFamily: "var(--vscode-editor-font-family)",
                 }}
               >
-                {String(log.logData[0]).substring(0, 50)}
+                {highlightWithContext(String(log.logData[0] ?? ""), searchQuery)}
               </span>
             </>
           }
         />
-
         <Chip
           size="small"
           style={{ fontSize: "11px" }}

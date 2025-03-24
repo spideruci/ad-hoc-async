@@ -23,9 +23,7 @@ const TerminalApp = (): JSX.Element => {
   const [metaLogs, setMetaLogs] = useState<Log[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchVisible, setIsSearchVisible] = useState<boolean>(false);
-  const [filteredLogs, setFilteredLogs] = useState<ConsoleLog[]>([]);
 
-  const listRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleMessage = useCallback((event: MessageEvent<ToEditorMessage>) => {
@@ -65,16 +63,6 @@ const TerminalApp = (): JSX.Element => {
       searchInputRef.current.focus();
     }
   }, [isSearchVisible]);
-
-  useEffect(() => {
-    if (!searchQuery) {
-      setFilteredLogs(logs);
-    } else {
-      setFilteredLogs(
-        logs.filter((log) => String(log.logData[0]).includes(searchQuery))
-      );
-    }
-  }, [logs, searchQuery]);
 
   const callTree = useMemo(() => {
     const callTree = new DynamicCallTree();
@@ -134,7 +122,8 @@ const TerminalApp = (): JSX.Element => {
       )}
       <CallTrees
         dynamicCallTree={callTree}
-        logs={filteredLogs}
+        logs={logs}
+        searchQuery={searchQuery}
         onLogDragStart={(log) => {
           vscode.postMessage({ command: "draggedLog", log });
         }}

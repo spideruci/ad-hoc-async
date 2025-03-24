@@ -9,11 +9,12 @@ import type { ConsoleLog } from "../types/message";
 
 export interface CallTreesProps {
   dynamicCallTree: DynamicCallTree;
+  searchQuery: string;
   logs: ConsoleLog[];
   onLogDragStart: (log: ConsoleLog) => void;
 }
 // use SortableTree.tsx to render the call trees
-const CallTrees: React.FC<CallTreesProps> = ({ dynamicCallTree, logs, onLogDragStart }) => {
+const CallTrees: React.FC<CallTreesProps> = ({ dynamicCallTree, logs, onLogDragStart, searchQuery}) => {
 
   const [abstractRoots, setAbstractRoots] = useState(
     dynamicCallTree.getAbstractedTrees().map(convertAbstractNodeToTreeItem)
@@ -26,7 +27,7 @@ const CallTrees: React.FC<CallTreesProps> = ({ dynamicCallTree, logs, onLogDragS
   return (
     <div style={{ display: "flex" }}>
       <div>
-        <SortableTree allLogs={logs} defaultItems={abstractRoots} collapsible originalTree={dynamicCallTree} onLogDragStart={onLogDragStart}/>
+        <SortableTree allLogs={logs} defaultItems={abstractRoots} collapsible originalTree={dynamicCallTree} onLogDragStart={onLogDragStart} searchQuery={searchQuery}/>
       </div>
     </div>
   );
