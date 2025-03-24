@@ -16,14 +16,16 @@ import type { ConsoleLog } from "../../types/message";
 interface Props {
   log: ConsoleLog;
   isOpen: boolean;
+  isHighlight: boolean;
   labelClick?: (log: ConsoleLog) => void;
   label?: string;
   searchQuery?: string;
   onDragStart: (log: ConsoleLog) => void;
+  forwardedRef?: React.Ref<HTMLDivElement>;
   onPinClick?: (labelName: string) => void;
   pinColor?: string;
 }
-function highlightWithContext(text: string, query?: string): JSX.Element | string {
+function highlightWithContext(text: string, isHighlight: boolean, query?: string): JSX.Element | string {
   if (!query || !text.toLowerCase().includes(query.toLowerCase())) {
     return text.substring(0, 50);
   }
@@ -38,7 +40,7 @@ function highlightWithContext(text: string, query?: string): JSX.Element | strin
     <>
       {start > 0 && "..."}
       {before}
-      <mark style={{ backgroundColor: "yellow" }}>{match}</mark>
+      <mark style={{ backgroundColor: isHighlight ? "red" : "yellow" }}>{match}</mark>
       {after}
       {end < text.length && "..."}
     </>
@@ -49,8 +51,10 @@ export default function LogOutput({
   log,
   isOpen,
   searchQuery,
+  isHighlight,
   label,
   labelClick,
+  forwardedRef,
   onDragStart,
   onPinClick,
   pinColor,
@@ -60,6 +64,7 @@ export default function LogOutput({
       draggable={true}
       onDragStart={() => onDragStart(log)}
       style={{ height: "30px" }}
+      ref={forwardedRef}
     >
       <ListItemButton sx={{ height: "30px" }}>
         <ListItemText
@@ -71,7 +76,7 @@ export default function LogOutput({
                   fontFamily: "var(--vscode-editor-font-family)",
                 }}
               >
-                {highlightWithContext(String(log.logData[0] ?? ""), searchQuery)}
+                {highlightWithContext(String(log.logData[0] ?? ""), isHighlight, searchQuery)}
               </span>
             </>
           }

@@ -169,6 +169,41 @@ export function SortableTree({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [sourceListIndex, setSourceListIndex] = useState<number | null>(null);
   const [gatherToTop, setGatherToTop] = useState(false); // State to control the visibility of the div
+  const logRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [matchedIndices, setMatchedIndices] = useState<number[]>([]);
+  const [currentMatchIdx, setCurrentMatchIdx] = useState<number>(0);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && matchedIndices.length > 0) {
+        const nextIdx = (currentMatchIdx + 1) % matchedIndices.length;
+        setCurrentMatchIdx(nextIdx);
+        const el = logRefs.current[matchedIndices[nextIdx]];
+        console.log(el);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [matchedIndices, currentMatchIdx]);
+
+  useEffect(() => {
+    const matches: number[] = [];
+  
+    allLogs.forEach((log, idx) => {
+      const msg = String(log.logData[0] ?? "").toLowerCase();
+      if (searchQuery && msg.includes(searchQuery.toLowerCase())) {
+        matches.push(idx);
+      }
+    });
+  
+    setMatchedIndices(matches);
+    setCurrentMatchIdx(0);
+    console.log(matchedIndices);
+    console.log(currentMatchIdx);
+  }, [searchQuery, allLogs]);
+
   const flattenedLists = useMemo(
     () =>
       lists.map((list) => {
@@ -205,6 +240,7 @@ export function SortableTree({
       ),
     [lists]
   );
+
   const flattenedAllItemSets = useMemo(
     () =>
       lists
@@ -221,6 +257,41 @@ export function SortableTree({
         ),
     [activeId, lists]
   );
+
+  const removeList = (
+    log: ConsoleLog,
+    listIndex: number,
+    invocationUUID?: string,
+    type?: "log" | "function",
+  ) => {
+    if (!invocationUUID || !type) {
+      return;
+    }
+    if (type === "log") {
+      const toRemoved = invocationUUID + log.lineNumber;
+      setSplittedIdSet(
+        (prevSet) => {
+          const newSet = new Set([...prevSet]);
+          newSet.delete(toRemoved);
+          return newSet;
+        }
+      );
+    } else {
+      setSplittedIdSet(
+        (prevSet) => {
+          const toRemoved = invocationUUID;
+          const newSet = new Set([...prevSet]);
+          newSet.delete(toRemoved);
+          return newSet;
+        }
+      );
+    }
+    setLists((prevLists) => {
+      const newLists = JSON.parse(JSON.stringify(prevLists)) as TreeItemList[];
+      newLists.splice(listIndex, 1);
+      return newLists;
+    });
+  }
 
   const clickLabel = (
     log: ConsoleLog,
@@ -280,17 +351,17 @@ export function SortableTree({
   // Compute `projected` for indentation-aware drop handling
   const projected =
     sourceListIndex !== null &&
-    activeId &&
-    overId &&
-    (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
-      overId === "placeholder")
+      activeId &&
+      overId &&
+      (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
+        overId === "placeholder")
       ? getProjection(
-          flattenedLists.flat(),
-          activeId,
-          overId,
-          offsetLeft,
-          indentationWidth
-        )
+        flattenedLists.flat(),
+        activeId,
+        overId,
+        offsetLeft,
+        indentationWidth
+      )
       : null;
 
   const sensorContext: SensorContext<AbstractNode> = useRef({
@@ -543,15 +614,15 @@ export function SortableTree({
                           searchQuery={searchQuery}
                           label={name}
                           labelClick={(log) => {
-                            if (lists[setIndex].isDraggable) {
-                              clickLabel(log, setIndex, uuid, type);
-                            }
+                            clickLabel(log, setIndex, uuid, type);
                           }}
                           onDragStart={(log: ConsoleLog) => {
                             onLogDragStart(log);
                           }}
                           onPinClick={handlePinClick}
                           pinColor={pinColor}
+                          isHighlight={index === matchedIndices[currentMatchIdx]}
+                          forwardedRef={(el) => (logRefs.current[index] = el)}
                         />
                       );
                     } else if (
@@ -572,7 +643,13 @@ export function SortableTree({
                           onDragStart={(log: ConsoleLog) => {
                             onLogDragStart(log);
                           }}
+                          labelClick={(log) => {
+                            removeList(log, setIndex, uuid, type);
+                          }
+                          }
                           onPinClick={handlePinClick}
+                          isHighlight={index === matchedIndices[currentMatchIdx]}
+                          forwardedRef={(el) => (logRefs.current[index] = el)}
                           pinColor={pinColor}
                         />
                       );

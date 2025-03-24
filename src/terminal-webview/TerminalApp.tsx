@@ -116,7 +116,7 @@ const TerminalApp = (): JSX.Element => {
               padding: "4px 8px",
             }}
           >
-            Dismiss
+            X
           </button>
         </div>
       )}
