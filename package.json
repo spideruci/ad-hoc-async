@@ -54,8 +54,9 @@
       "path": "./node_modules/cz-customizable"
     }
   },
+  "publisher": "SpiderLabAtUCI",
   "scripts": {
-    "vscode:prepublish": "pnpm run package",
+    "vscode:prepublish": "rm -rf ./node_modules package_lock.json && npm install --legacy-peer-deps && npm run package",
     "compile": "webpack",
     "watch": "webpack --watch",
     "package": "webpack --mode production --devtool hidden-source-map",
@@ -94,7 +95,9 @@
     "typescript": "^5.6.3",
     "util": "^0.12.5",
     "webpack": "^5.95.0",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "@types/react": "^17.0.0",
+    "@types/react-dom": "^17.0.0"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -105,8 +108,6 @@
     "@monaco-editor/react": "^4.6.0",
     "@mui/icons-material": "^6.4.5",
     "@mui/material": "^6.4.5",
-    "@types/react": "^18.3.1",
-    "@types/react-dom": "^18.3.1",
     "@typescript-eslint/typescript-estree": "^8.23.0",
     "@use-gesture/react": "^10.3.1",
     "@xyflow/react": "^12.4.2",
@@ -115,9 +116,9 @@
     "highcharts": "^12.1.2",
     "highcharts-react-official": "^3.2.1",
     "monaco-editor": "^0.52.2",
-    "react": "^18.3.1",
+    "react": "^17.0.0",
     "react-complex-tree": "^2.4.6",
-    "react-dom": "^18.3.1",
+    "react-dom": "^17.0.0",
     "react-json-view": "^1.21.3",
     "react-select": "^5.10.0",
     "recharts": "^2.15.1"
