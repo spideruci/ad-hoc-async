@@ -169,7 +169,7 @@ export function SortableTree({
   // Tracks the item ID that is being dragged. null if not draggin.
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [sourceListIndex, setSourceListIndex] = useState<number | null>(null);
-  const [gatherToTop, setGatherToTop] = useState(false); // State to control the visibility of the div
+  const [gatherToTop, setGatherToTop] = useState(true); // State to control the visibility of the div
   const logRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [matchedIndices, setMatchedIndices] = useState<number[]>([]);
   const [currentMatchIdx, setCurrentMatchIdx] = useState<number>(0);
@@ -433,6 +433,20 @@ export function SortableTree({
 
   return (
     <>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={gatherToTop}
+            onChange={() => setGatherToTop(!gatherToTop)}
+            size="small"
+            inputProps={{ "aria-label": "Show Div" }}
+          />
+        }
+        label="Gather to the top"
+        style={{
+          color: "#f0f0f0",
+        }}
+      />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -533,19 +547,7 @@ export function SortableTree({
           document.body
         )}
       </DndContext>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={gatherToTop}
-            onChange={() => setGatherToTop(!gatherToTop)}
-            inputProps={{ "aria-label": "Show Div" }}
-          />
-        }
-        label="Gather to the top"
-        style={{
-          color: "#f0f0f0",
-        }}
-      />
+
       <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
         {flattenedAllItemSets.map((set, setIndex) => {
           const uuidHashList: { [functionKey: string]: string[] } = {};
@@ -794,22 +796,18 @@ export function SortableTree({
         const originalParentId = originalTree.getOriginalParentId(
           itemToMove.id as string
         );
-        if (parentId !== null) {
-          if (parentId !== originalParentId) {
-            resetState();
-            return newLists;
-          }
-        }
         if (
-          parentId === null &&
-          clonedDestinationItems.findIndex(
-            (item) => item.id === originalParentId
-          ) >= 0
+            clonedDestinationItems.findIndex(
+              (item) => item.id === originalParentId
+            ) >= 0
         ) {
           parentId = originalParentId;
           depth =
             clonedDestinationItems.find((item) => item.id === originalParentId)!
               .depth + 1;
+        } else {
+          depth = 0;
+          parentId = null;
         }
         const itemCloned: FlattenedItem<AbstractNode> = JSON.parse(
           JSON.stringify(itemToMove)
