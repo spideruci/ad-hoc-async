@@ -670,6 +670,8 @@ export function SortableTree({
                           }}
                         />
                       );
+                    } else if (gatherToTop) {
+                      return <div style={{ height: "0px" }}></div>;
                     } else {
                       return splittedIDSet.has(uuid! + log.lineNumber) ||
                         splittedIDSet.has(uuid!) ? (
@@ -797,9 +799,9 @@ export function SortableTree({
           itemToMove.id as string
         );
         if (
-            clonedDestinationItems.findIndex(
-              (item) => item.id === originalParentId
-            ) >= 0
+          clonedDestinationItems.findIndex(
+            (item) => item.id === originalParentId
+          ) >= 0
         ) {
           parentId = originalParentId;
           depth =

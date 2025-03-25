@@ -50,6 +50,7 @@ export type Log = ({
     currentUUID: string;
     parentUUID: string;
     timestamp: number;
+    programUUID: string;
     filename: string;
     functionName: string;
 };

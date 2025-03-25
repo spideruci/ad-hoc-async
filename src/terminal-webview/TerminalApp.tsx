@@ -23,18 +23,29 @@ const TerminalApp = (): JSX.Element => {
   const [metaLogs, setMetaLogs] = useState<Log[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchVisible, setIsSearchVisible] = useState<boolean>(false);
-
+  const [currentProgramId, setCurrentProgramId] = useState<string | undefined>(undefined);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
+  const clearAll = () => {
+    setLogs([]);
+    setMetaLogs([]);
+    setSearchQuery("");
+    setIsSearchVisible(false);
+  };
   const handleMessage = useCallback((event: MessageEvent<ToEditorMessage>) => {
     if (event.data.command === "log") {
       const log = event.data.log;
+      if (currentProgramId && log.programUUID !== currentProgramId) {
+        clearAll();
+        setCurrentProgramId(log.programUUID);
+      } else if (currentProgramId === undefined) {
+        setCurrentProgramId(log.programUUID);
+      }
       if (log.type === "console.log") {
         setLogs((prevLogs) => [...prevLogs, log]);
       }
       setMetaLogs((prev) => [...prev, log]);
     }
-  }, []);
+  }, [currentProgramId]);
 
   useEffect(() => {
     vscode.postMessage({ command: "ready" });

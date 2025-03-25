@@ -26,8 +26,23 @@ export class DynamicCallTree {
 
   private originalAbstractRoots: AbstractNode[] = [];
   private originalAbstractNodeMap = new Map<string, AbstractNode>(); // Track original locations
-
+  private currentExecutionId?: string = undefined;
+  private clearAll(): void {
+    this.nodeMap = new Map<string, LogNode>();
+    this.roots = [];
+    this.abstractRoots = [];
+    this.abstractNodeMap = new Map<string, AbstractNode>();
+    this.originalAbstractNodeMap = new Map<string, AbstractNode>(); // Track original locations
+    this.originalAbstractRoots = [];
+  }
   public appendNode(log: Log): LogNode[] {
+    if (this.currentExecutionId && log.programUUID !== this.currentExecutionId) {
+      this.clearAll();
+      this.currentExecutionId = log.programUUID;
+    } else if (this.currentExecutionId === undefined) {
+      this.currentExecutionId = log.programUUID;
+    }
+    this.currentExecutionId = log.programUUID;
     if (log.type === "functionStart") {
       const updatedNodes = this.handleFunctionStart(log);
       this.createAbstractedTree();
