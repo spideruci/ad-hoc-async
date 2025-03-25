@@ -427,6 +427,8 @@ export function SortableTree({
     });
   };
 
+  const [hoveredLabelId, setHoveredLabelId] = useState<string>("");
+
   return (
     <>
       <DndContext
@@ -640,6 +642,25 @@ export function SortableTree({
                           searchQuery={searchQuery}
                           isOpen={false}
                           label={name}
+                          labelClick={(log) => {
+                            if (!lists[setIndex].isDraggable) {
+                              setSplittedIdSet((prevSet) => {
+                                const newSet = new Set(prevSet);
+                                newSet.delete(uuid!);
+                                return newSet;
+                              });
+                              setLists((prevLists) => {
+                                const newLists = JSON.parse(
+                                  JSON.stringify(prevLists)
+                                );
+                                const filteredLists = newLists.filter(
+                                  (x: any) => x.invocationUUID !== uuid
+                                );
+                                return filteredLists;
+                              });
+                              setHoveredLabelId("");
+                            }
+                          }}
                           onDragStart={(log: ConsoleLog) => {
                             onLogDragStart(log);
                           }}
@@ -651,6 +672,14 @@ export function SortableTree({
                           isHighlight={index === matchedIndices[currentMatchIdx]}
                           forwardedRef={(el) => (logRefs.current[index] = el)}
                           pinColor={pinColor}
+                          isBackEnabled={true}
+                          showBackLabel={hoveredLabelId === uuid}
+                          setHoveredLabelId={() => {
+                            setHoveredLabelId(uuid!);
+                          }}
+                          resetHoveredLabelId={() => {
+                            setHoveredLabelId("");
+                          }}
                         />
                       );
                     } else {

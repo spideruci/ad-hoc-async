@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 import {
   ListItemButton,
   ListItemText,
@@ -10,7 +11,7 @@ import {
   Chip,
 } from "@mui/material";
 import ReactJson from "react-json-view";
-import PushPinIcon from "@mui/icons-material/PushPin"; // Import the pin icon
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import type { ConsoleLog } from "../../types/message";
 
 interface Props {
@@ -24,8 +25,16 @@ interface Props {
   forwardedRef?: React.Ref<HTMLDivElement>;
   onPinClick?: (labelName: string) => void;
   pinColor?: string;
+  isBackEnabled?: boolean;
+  showBackLabel?: boolean;
+  setHoveredLabelId?: () => void;
+  resetHoveredLabelId?: () => void;
 }
-function highlightWithContext(text: string, isHighlight: boolean, query?: string): JSX.Element | string {
+function highlightWithContext(
+  text: string,
+  isHighlight: boolean,
+  query?: string
+): JSX.Element | string {
   if (!query || !text.toLowerCase().includes(query.toLowerCase())) {
     return text.substring(0, 50);
   }
@@ -40,7 +49,9 @@ function highlightWithContext(text: string, isHighlight: boolean, query?: string
     <>
       {start > 0 && "..."}
       {before}
-      <mark style={{ backgroundColor: isHighlight ? "red" : "yellow" }}>{match}</mark>
+      <mark style={{ backgroundColor: isHighlight ? "red" : "yellow" }}>
+        {match}
+      </mark>
       {after}
       {end < text.length && "..."}
     </>
@@ -58,6 +69,10 @@ export default function LogOutput({
   onDragStart,
   onPinClick,
   pinColor,
+  isBackEnabled,
+  showBackLabel,
+  setHoveredLabelId,
+  resetHoveredLabelId,
 }: Props): JSX.Element {
   return (
     <div
@@ -76,7 +91,11 @@ export default function LogOutput({
                   fontFamily: "var(--vscode-editor-font-family)",
                 }}
               >
-                {highlightWithContext(String(log.logData[0] ?? ""), isHighlight, searchQuery)}
+                {highlightWithContext(
+                  String(log.logData[0] ?? ""),
+                  isHighlight,
+                  searchQuery
+                )}
               </span>
             </>
           }
@@ -84,24 +103,34 @@ export default function LogOutput({
         <Chip
           size="small"
           style={{ fontSize: "11px" }}
-          label={label}
+          label={!showBackLabel ? label : "Unsplit and move back"}
           onClick={() => {
             if (labelClick) {
               labelClick(log);
             }
           }}
+          onMouseEnter={() =>
+            isBackEnabled && setHoveredLabelId && setHoveredLabelId()
+          }
+          onMouseLeave={() =>
+            isBackEnabled && resetHoveredLabelId && resetHoveredLabelId()
+          }
+          deleteIcon={
+            !showBackLabel ? (
+              <FiberManualRecordIcon
+                fontSize="small"
+                style={{ color: pinColor ?? "#f8f8f8" }}
+              />
+            ) : undefined
+          }
+          onDelete={
+            !showBackLabel
+              ? () => {
+                  onPinClick && label && onPinClick(label);
+                }
+              : undefined
+          }
         />
-        <IconButton
-          size="small"
-          onClick={() => {
-            onPinClick && label && onPinClick(label);
-          }}
-        >
-          <PushPinIcon
-            fontSize="small"
-            style={{ color: pinColor ?? "#f8f8f8" }}
-          />
-        </IconButton>
       </ListItemButton>
       <Collapse in={isOpen} timeout="auto" unmountOnExit>
         <Card sx={{ height: "auto" }}>
