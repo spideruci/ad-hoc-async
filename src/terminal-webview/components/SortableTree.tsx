@@ -145,6 +145,7 @@ interface TreeItemList {
   invocationUUID?: string;
   type?: "log" | "function";
   lineNumber?: number;
+  parentListIndex?: number;
 }
 
 /**
@@ -179,7 +180,6 @@ export function SortableTree({
         const nextIdx = (currentMatchIdx + 1) % matchedIndices.length;
         setCurrentMatchIdx(nextIdx);
         const el = logRefs.current[matchedIndices[nextIdx]];
-        console.log(el);
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     };
@@ -200,8 +200,6 @@ export function SortableTree({
   
     setMatchedIndices(matches);
     setCurrentMatchIdx(0);
-    console.log(matchedIndices);
-    console.log(currentMatchIdx);
   }, [searchQuery, allLogs]);
 
   const flattenedLists = useMemo(
@@ -291,7 +289,7 @@ export function SortableTree({
       newLists.splice(listIndex, 1);
       return newLists;
     });
-  }
+  };
 
   const clickLabel = (
     log: ConsoleLog,
@@ -311,7 +309,7 @@ export function SortableTree({
       setSplittedIdSet((prevSet) => new Set([...prevSet, invocationUUID]));
     }
     setLists((prevLists) => {
-      const newLists = JSON.parse(JSON.stringify(prevLists));
+      const newLists = JSON.parse(JSON.stringify(prevLists)) as TreeItemList[];
       const newItem = JSON.parse(
         JSON.stringify(prevLists[listIndex])
       ) as TreeItemList;
@@ -322,12 +320,14 @@ export function SortableTree({
       newLists.splice(listIndex + 1, 0, newItem);
       newItem.invocationUUID = invocationUUID;
       newItem.type = type;
+      newItem.parentListIndex = listIndex;
       if (type === "log") {
         newItem.lineNumber = log.lineNumber;
       }
       return newLists;
     });
   };
+
   // The item ID that is beneath the dragged item.
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
 
