@@ -285,6 +285,7 @@ export function SortableTree({
       newLists.splice(listIndex, 1);
       return newLists;
     });
+    setHoveredLabelId("");
   };
 
   const clickLabel = (
@@ -640,31 +641,12 @@ export function SortableTree({
                           searchQuery={searchQuery}
                           isOpen={false}
                           label={name}
-                          labelClick={() => {
-                            if (!lists[setIndex].isDraggable) {
-                              setSplittedIdSet((prevSet) => {
-                                const newSet = new Set(prevSet);
-                                newSet.delete(uuid!);
-                                return newSet;
-                              });
-                              setLists((prevLists) => {
-                                const newLists = JSON.parse(
-                                  JSON.stringify(prevLists)
-                                );
-                                const filteredLists = newLists.filter(
-                                  (x: any) => x.invocationUUID !== uuid
-                                );
-                                return filteredLists;
-                              });
-                              setHoveredLabelId("");
-                            }
-                          }}
                           onDragStart={(log: ConsoleLog) => {
                             onLogDragStart(log);
                           }}
-                          // labelClick={(log) => {
-                          //   removeList(log, setIndex, uuid, type);
-                          // }}
+                          labelClick={(log) => {
+                            removeList(log, setIndex, uuid, type);
+                          }}
                           onPinClick={handlePinClick}
                           isHighlight={
                             index === matchedIndices[currentMatchIdx]
