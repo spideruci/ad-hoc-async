@@ -282,10 +282,14 @@ export function SortableTree({
     }
     setLists((prevLists) => {
       const newLists = JSON.parse(JSON.stringify(prevLists)) as TreeItemList[];
-      newLists.splice(listIndex, 1);
-      return newLists;
+      const filteredLists = newLists.filter(
+        (x: any) => x.invocationUUID !== invocationUUID
+      );
+      return filteredLists;
     });
+
     setHoveredLabelId("");
+    setGhostModeHoveredId("");
   };
 
   const clickLabel = (
@@ -425,6 +429,7 @@ export function SortableTree({
   };
 
   const [hoveredLabelId, setHoveredLabelId] = useState<string>("");
+  const [ghostModeHoveredId, setGhostModeHoveredId] = useState<string>("");
 
   return (
     <>
@@ -664,7 +669,25 @@ export function SortableTree({
                         />
                       );
                     } else {
-                      return (
+                      return setIndex === 0 ? (
+                        <LogOutput
+                          key={index}
+                          log={log}
+                          isOpen={false}
+                          label={name}
+                          labelClick={(log) => {
+                            removeList(log, setIndex, uuid, type);
+                          }}
+                          ghostMode={true}
+                          isGhostModeHovered={ghostModeHoveredId === uuid}
+                          setGhostModeHoveredId={() => {
+                            setGhostModeHoveredId(uuid!);
+                          }}
+                          resetGhostModeHoveredId={() => {
+                            setGhostModeHoveredId("");
+                          }}
+                        />
+                      ) : (
                         <div
                           style={{ height: !gatherToTop ? "30px" : "0px" }}
                         ></div>

@@ -1,4 +1,5 @@
 /* eslint-disable indent */
+import { useState } from "react";
 import {
   ListItemButton,
   ListItemText,
@@ -17,11 +18,11 @@ import type { ConsoleLog } from "../../types/message";
 interface Props {
   log: ConsoleLog;
   isOpen: boolean;
-  isHighlight: boolean;
+  isHighlight?: boolean;
   labelClick?: (log: ConsoleLog) => void;
   label?: string;
   searchQuery?: string;
-  onDragStart: (log: ConsoleLog) => void;
+  onDragStart?: (log: ConsoleLog) => void;
   forwardedRef?: React.Ref<HTMLDivElement>;
   onPinClick?: (labelName: string) => void;
   pinColor?: string;
@@ -29,10 +30,15 @@ interface Props {
   showBackLabel?: boolean;
   setHoveredLabelId?: () => void;
   resetHoveredLabelId?: () => void;
+  ghostMode?: boolean;
+  isGhostModeHovered?: boolean;
+  setGhostModeHoveredId?: () => void;
+  resetGhostModeHoveredId?: () => void;
 }
+
 function highlightWithContext(
   text: string,
-  isHighlight: boolean,
+  isHighlight?: boolean,
   query?: string
 ): JSX.Element | string {
   if (!query || !text.toLowerCase().includes(query.toLowerCase())) {
@@ -73,13 +79,30 @@ export default function LogOutput({
   showBackLabel,
   setHoveredLabelId,
   resetHoveredLabelId,
+  ghostMode,
+  isGhostModeHovered,
+  setGhostModeHoveredId,
+  resetGhostModeHoveredId,
 }: Props): JSX.Element {
+  const [showBackButtonOnGhostModeHover, setShowBackButtonOnGhostModeHover] =
+    useState(false);
   return (
     <div
       draggable={true}
-      onDragStart={() => onDragStart(log)}
-      style={{ height: "30px" }}
+      onDragStart={() => onDragStart && onDragStart(log)}
+      style={{
+        height: "30px",
+        opacity: isGhostModeHovered ? 0.6 : ghostMode ? 0.2 : 1,
+      }}
       ref={forwardedRef}
+      onMouseEnter={() => {
+        ghostMode && setGhostModeHoveredId && setGhostModeHoveredId();
+        ghostMode && setShowBackButtonOnGhostModeHover(true);
+      }}
+      onMouseLeave={() => {
+        ghostMode && resetGhostModeHoveredId && resetGhostModeHoveredId();
+        ghostMode && setShowBackButtonOnGhostModeHover(false);
+      }}
     >
       <ListItemButton sx={{ height: "30px" }}>
         <ListItemText
@@ -100,37 +123,59 @@ export default function LogOutput({
             </>
           }
         />
-        <Chip
-          size="small"
-          style={{ fontSize: "11px" }}
-          label={!showBackLabel ? label : "Unsplit and move back"}
-          onClick={() => {
-            if (labelClick) {
-              labelClick(log);
+        {!ghostMode && (
+          <Chip
+            size="small"
+            style={{
+              fontSize: "11px",
+              width: "180px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            label={!showBackLabel ? label : "Unsplit and move back"}
+            onClick={() => {
+              if (labelClick) {
+                labelClick(log);
+              }
+            }}
+            onMouseEnter={() =>
+              isBackEnabled && setHoveredLabelId && setHoveredLabelId()
             }
-          }}
-          onMouseEnter={() =>
-            isBackEnabled && setHoveredLabelId && setHoveredLabelId()
-          }
-          onMouseLeave={() =>
-            isBackEnabled && resetHoveredLabelId && resetHoveredLabelId()
-          }
-          deleteIcon={
-            !showBackLabel ? (
-              <FiberManualRecordIcon
-                fontSize="small"
-                style={{ color: pinColor ?? "#f8f8f8" }}
-              />
-            ) : undefined
-          }
-          onDelete={
-            !showBackLabel
-              ? () => {
-                  onPinClick && label && onPinClick(label);
-                }
-              : undefined
-          }
-        />
+            onMouseLeave={() =>
+              isBackEnabled && resetHoveredLabelId && resetHoveredLabelId()
+            }
+            deleteIcon={
+              !showBackLabel ? (
+                <FiberManualRecordIcon
+                  fontSize="small"
+                  style={{ color: pinColor ?? "#f8f8f8" }}
+                />
+              ) : undefined
+            }
+            onDelete={
+              !showBackLabel
+                ? () => {
+                    onPinClick && label && onPinClick(label);
+                  }
+                : undefined
+            }
+          />
+        )}
+        {ghostMode && showBackButtonOnGhostModeHover && (
+          <Chip
+            size="small"
+            style={{
+              fontSize: "11px",
+            }}
+            label={"Moved splitted logs back"}
+            onClick={() => {
+              if (labelClick) {
+                labelClick(log);
+              }
+            }}
+          />
+        )}
       </ListItemButton>
       <Collapse in={isOpen} timeout="auto" unmountOnExit>
         <Card sx={{ height: "auto" }}>
