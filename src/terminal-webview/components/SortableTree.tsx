@@ -669,7 +669,8 @@ export function SortableTree({
                         />
                       );
                     } else {
-                      return setIndex === 0 ? (
+                      return splittedIDSet.has(uuid! + log.lineNumber) ||
+                        splittedIDSet.has(uuid!) ? (
                         <LogOutput
                           key={index}
                           log={log}
