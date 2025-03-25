@@ -190,14 +190,14 @@ export function SortableTree({
 
   useEffect(() => {
     const matches: number[] = [];
-  
+
     allLogs.forEach((log, idx) => {
       const msg = String(log.logData[0] ?? "").toLowerCase();
       if (searchQuery && msg.includes(searchQuery.toLowerCase())) {
         matches.push(idx);
       }
     });
-  
+
     setMatchedIndices(matches);
     setCurrentMatchIdx(0);
   }, [searchQuery, allLogs]);
@@ -260,29 +260,25 @@ export function SortableTree({
     log: ConsoleLog,
     listIndex: number,
     invocationUUID?: string,
-    type?: "log" | "function",
+    type?: "log" | "function"
   ) => {
     if (!invocationUUID || !type) {
       return;
     }
     if (type === "log") {
       const toRemoved = invocationUUID + log.lineNumber;
-      setSplittedIdSet(
-        (prevSet) => {
-          const newSet = new Set([...prevSet]);
-          newSet.delete(toRemoved);
-          return newSet;
-        }
-      );
+      setSplittedIdSet((prevSet) => {
+        const newSet = new Set([...prevSet]);
+        newSet.delete(toRemoved);
+        return newSet;
+      });
     } else {
-      setSplittedIdSet(
-        (prevSet) => {
-          const toRemoved = invocationUUID;
-          const newSet = new Set([...prevSet]);
-          newSet.delete(toRemoved);
-          return newSet;
-        }
-      );
+      setSplittedIdSet((prevSet) => {
+        const toRemoved = invocationUUID;
+        const newSet = new Set([...prevSet]);
+        newSet.delete(toRemoved);
+        return newSet;
+      });
     }
     setLists((prevLists) => {
       const newLists = JSON.parse(JSON.stringify(prevLists)) as TreeItemList[];
@@ -351,17 +347,17 @@ export function SortableTree({
   // Compute `projected` for indentation-aware drop handling
   const projected =
     sourceListIndex !== null &&
-      activeId &&
-      overId &&
-      (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
-        overId === "placeholder")
+    activeId &&
+    overId &&
+    (flattenedLists.flat().findIndex(({ id }) => id === overId) > 0 ||
+      overId === "placeholder")
       ? getProjection(
-        flattenedLists.flat(),
-        activeId,
-        overId,
-        offsetLeft,
-        indentationWidth
-      )
+          flattenedLists.flat(),
+          activeId,
+          overId,
+          offsetLeft,
+          indentationWidth
+        )
       : null;
 
   const sensorContext: SensorContext<AbstractNode> = useRef({
@@ -623,7 +619,9 @@ export function SortableTree({
                           }}
                           onPinClick={handlePinClick}
                           pinColor={pinColor}
-                          isHighlight={index === matchedIndices[currentMatchIdx]}
+                          isHighlight={
+                            index === matchedIndices[currentMatchIdx]
+                          }
                           forwardedRef={(el) => (logRefs.current[index] = el)}
                         />
                       );
@@ -642,7 +640,7 @@ export function SortableTree({
                           searchQuery={searchQuery}
                           isOpen={false}
                           label={name}
-                          labelClick={(log) => {
+                          labelClick={() => {
                             if (!lists[setIndex].isDraggable) {
                               setSplittedIdSet((prevSet) => {
                                 const newSet = new Set(prevSet);
@@ -664,12 +662,13 @@ export function SortableTree({
                           onDragStart={(log: ConsoleLog) => {
                             onLogDragStart(log);
                           }}
-                          labelClick={(log) => {
-                            removeList(log, setIndex, uuid, type);
-                          }
-                          }
+                          // labelClick={(log) => {
+                          //   removeList(log, setIndex, uuid, type);
+                          // }}
                           onPinClick={handlePinClick}
-                          isHighlight={index === matchedIndices[currentMatchIdx]}
+                          isHighlight={
+                            index === matchedIndices[currentMatchIdx]
+                          }
                           forwardedRef={(el) => (logRefs.current[index] = el)}
                           pinColor={pinColor}
                           isBackEnabled={true}
