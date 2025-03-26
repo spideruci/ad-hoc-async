@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Switch from "@mui/material/Switch";
+import Chip from "@mui/material/Chip";
 import FormControlLabel from "@mui/material/FormControlLabel";
 
 import type {
@@ -146,6 +147,7 @@ interface TreeItemList {
   type?: "log" | "function";
   lineNumber?: number;
   parentListIndex?: number;
+  splitLabel?: string;
 }
 
 /**
@@ -257,8 +259,7 @@ export function SortableTree({
   );
 
   const removeList = (
-    log: ConsoleLog,
-    listIndex: number,
+    log?: ConsoleLog,
     invocationUUID?: string,
     type?: "log" | "function"
   ) => {
@@ -266,7 +267,7 @@ export function SortableTree({
       return;
     }
     if (type === "log") {
-      const toRemoved = invocationUUID + log.lineNumber;
+      const toRemoved = invocationUUID + log?.lineNumber;
       setSplittedIdSet((prevSet) => {
         const newSet = new Set([...prevSet]);
         newSet.delete(toRemoved);
@@ -296,7 +297,8 @@ export function SortableTree({
     log: ConsoleLog,
     listIndex: number,
     invocationUUID?: string,
-    type?: "log" | "function"
+    type?: "log" | "function",
+    splitLabel?: string
   ) => {
     if (!invocationUUID || !type) {
       return;
@@ -322,6 +324,7 @@ export function SortableTree({
       newItem.invocationUUID = invocationUUID;
       newItem.type = type;
       newItem.parentListIndex = listIndex;
+      newItem.splitLabel = splitLabel;
       if (type === "log") {
         newItem.lineNumber = log.lineNumber;
       }
@@ -563,6 +566,44 @@ export function SortableTree({
                   overflowX: "clip",
                 }}
               >
+                {(!lists[setIndex].isDraggable &&
+                  lists[setIndex].type === "function") ||
+                lists[setIndex].type === "log" ? (
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      height: "40px",
+                      color: "#f0f0f0",
+                      display: "flex",
+                      flexDirection: "row",
+                      opacity: 0.7,
+                      alignItems: "center",
+                    }}
+                  >
+                    <div style={{ marginRight: "10px" }}>
+                      Minimized call stacks and log outputs for the
+                      <strong> {lists[setIndex].splitLabel}</strong>
+                    </div>
+                    <Chip
+                      size="small"
+                      style={{
+                        fontSize: "12px",
+                      }}
+                      label={"Move split log(s) back"}
+                      onClick={() => {
+                        if (lists[setIndex].type === "function") {
+                          removeList(
+                            undefined,
+                            lists[setIndex].invocationUUID,
+                            lists[setIndex].type
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ height: "40px" }}></div>
+                )}
                 {allLogs
                   .sort((a, b) => a.timestamp - b.timestamp)
                   .map((log, index) => {
@@ -623,7 +664,7 @@ export function SortableTree({
                           searchQuery={searchQuery}
                           label={name}
                           labelClick={(log) => {
-                            clickLabel(log, setIndex, uuid, type);
+                            clickLabel(log, setIndex, uuid, type, name);
                           }}
                           onDragStart={(log: ConsoleLog) => {
                             onLogDragStart(log);
@@ -655,7 +696,7 @@ export function SortableTree({
                             onLogDragStart(log);
                           }}
                           labelClick={(log) => {
-                            removeList(log, setIndex, uuid, type);
+                            removeList(log, uuid, type);
                           }}
                           onPinClick={handlePinClick}
                           isHighlight={
@@ -686,7 +727,7 @@ export function SortableTree({
                           isOpen={false}
                           label={name}
                           labelClick={(log) => {
-                            removeList(log, setIndex, uuid, type);
+                            removeList(log, uuid, type);
                           }}
                           ghostMode={true}
                           isGhostModeHovered={ghostModeHoveredId === uuid}
