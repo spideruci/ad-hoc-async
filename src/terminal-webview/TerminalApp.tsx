@@ -55,7 +55,7 @@ const TerminalApp = (): JSX.Element => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key === "f") {
+      if ((event.metaKey || event.ctrlKey) && event.key === "f") {
         event.preventDefault();
         if (isSearchVisible && searchInputRef.current) {
           searchInputRef.current.focus();
