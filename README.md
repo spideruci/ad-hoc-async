@@ -1,71 +1,37 @@
-# CoDebugger README
 
-This is the README for your extension "CoDebugger". After writing up a brief description, we recommend including the following sections.
 
-## Features
+### 🗂️ Intro to Logiverse
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+> “Let me walk you through how to use **Logiverse**, a VSCode extension that helps developers organize and contextualize their `console.log` outputs more effectively.”
 
 ---
 
-## Following extension guidelines
+### 🔁 Log Timeline View
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+> “When Logiverse first opens, it presents the log outputs in **temporal order**—the same sequence they appeared during program execution. You’ll see log messages printed by the server as the application runs.”
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+---
 
-## Working with Markdown
+### 🌳 Function Tree (Top of the View)
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+> “At the top of the panel, you’ll see a tree view showing a simplified call graph of your program. But to reduce clutter, Logiverse only includes functions that actually contain console.log statements. This helps you focus only on the parts of the code that generated output.”
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+> “Each tree node represents a function that logged something during runtime. You can click on a node to expand it and inspect the logs or subsequent function calls inside.”
 
-## For more information
+---
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+### ✋ Drag & Drop to Create Custom Views
 
-**Enjoy!**
+> “You can **drag** any function or log statement to the **top of the list** to create a new list. This isolates all logs associated with that function or that specific log statement. It’s a quick way to focus on just one part of the code or isolate a specific execution path.”
+![Demo](./figures/call-graph.gif)
+
+---
+
+### 🔖 Labels and Filtering
+
+> “Each log message is tagged with a **label**, typically the function name and call index.  
+Clicking on a label will **filter the logs** to show only those related to that specific function call.”
+
+> “For example, if you want to focus on the first call to `anonymous_function_15`, the one that received `Order 001`, you can click on its label.  
+Logiverse will then split out the logs for just that function call—making it much easier to follow what happened in that call from start to finish.”
+![Demo](./figures/execution-label.gif)

@@ -10,7 +10,7 @@ export type ToVSCodeMessage = {
 } | { command: "requestAST" } | { command: "ready" } | {
     command: "logHover",
     logId: string,
-};
+} | { command: "draggedLog", log: ConsoleLog };
 
 export type ToEditorMessage = {
     command: "log";
@@ -26,17 +26,18 @@ export type ToEditorMessage = {
     command: "load";
     text: string;
     language: string;
-};
+} | { command: "draggedLog", log: ConsoleLog };
 
 export type ConsoleLog = {
     filename: string;
     functionName: string;
     lineNumber: number;
     timestamp: number;
-    functionKey: string;
+    currentUUID: string;
     logData: never[];
     logId: string;
     type: "console.log";
+    consoleLogText: string;
 };
 export type Log = ({
     type: "statement";
@@ -46,8 +47,10 @@ export type Log = ({
     condition: string;
 } | {type: "functionStart" | "functionEnd"}) & {   
     lineNumber: number;
-    functionKey: string;
+    currentUUID: string;
+    parentUUID: string;
     timestamp: number;
+    programUUID: string;
     filename: string;
     functionName: string;
 };

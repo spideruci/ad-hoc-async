@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import type { ActionMeta, MultiValue } from "react-select";
 import Highcharts from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 import "highcharts/modules/boost";
@@ -8,7 +7,6 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
 import type { ConsoleLog, Log } from "../../types/message";
 import { useRange } from "../context-providers/RangeProvider";
-import SelectFunctionInvocation from "./SelectFunctionInvocation";
 
 declare module "highcharts" {
   export function each<T>(
@@ -37,34 +35,12 @@ export default function TimelineHighcharts({
   ): void => {
     setIsRuntimeContext(runtimeContext);
   };
-  // Range context
   const { range, setRange } = useRange();
 
-  const functionKeyMapping = useMemo(() => {
-    const mapping: Record<string, Record<string, number>> = {};
-    const counters: Record<string, number> = {};
-
-    logs.forEach((log) => {
-      if (log.lineNumber >= startLine && log.lineNumber <= endLine) {
-        if (!mapping[log.functionName]) {
-          mapping[log.functionName] = {};
-          counters[log.functionName] = 1;
-        }
-        if (!mapping[log.functionName][log.functionKey]) {
-          mapping[log.functionName][log.functionKey] = counters[
-            log.functionName
-          ]++;
-        }
-      }
-    });
-
-    return mapping;
-  }, [logs, startLine, endLine]);
-  // Group logs by function key
   const chartData = useMemo(() => {
     return logs.reduce((acc, log) => {
       if (log.lineNumber >= startLine && log.lineNumber <= endLine) {
-        const key = `${log.functionName}::-::${log.functionKey}`;
+        const key = `${log.functionName}::-::${log.currentUUID}`;
         acc[key] = acc[key] || [];
         acc[key].push({
           timestamp: log.timestamp,
@@ -113,23 +89,6 @@ export default function TimelineHighcharts({
     });
   }, [startLine, endLine]);
 
-  // For the dropdown
-  const options = useMemo(
-    () =>
-      functionKeys.map((key) => {
-        const [functionName, functionKey] = key.split("::-::");
-        const labelIndex = functionKeyMapping[functionName][functionKey];
-        return { value: key, label: String(labelIndex) };
-      }),
-    [functionKeyMapping, functionKeys]
-  );
-
-  const handleSelectChange = (
-    newValue: MultiValue<{ value: string; label: string }>,
-    _actionMeta: ActionMeta<{ value: string; label: string }>
-  ): void => {
-    setSelectedFunctions(new Set(newValue.map((option) => option.value)));
-  };
   const logMapping = useMemo(() => {
     const mapping: Record<string, ConsoleLog> = {};
     functionKeys.forEach((key) => {
@@ -234,21 +193,18 @@ export default function TimelineHighcharts({
           );
         }
       });
-
-      chart.redraw(false); // Apply updates without full re-render
-
-      // Automatically zoom in on the latest 10 data points
-      const allTimestamps = Object.values(chartData)
-        .flat()
+      const allTimestamps = logs
         .map((d) => d.timestamp)
         .sort((a, b) => a - b);
       if (allTimestamps.length > 0) {
         const totalPoints = allTimestamps.length;
-        const zoomStartIndex = Math.max(totalPoints - 10, 0);
+        const zoomStartIndex = Math.max(totalPoints - 40, 0);
         const minTimestamp = allTimestamps[zoomStartIndex];
         const maxTimestamp = allTimestamps[totalPoints - 1];
-        chart.xAxis[0].setExtremes(minTimestamp, maxTimestamp, true, false);
+        chart.xAxis[0].setExtremes(minTimestamp, maxTimestamp, false, false);
       }
+      chart.redraw(true); // Apply updates without full re-render
+      // Automatically zoom in on the latest 10 data points
     }
   }, [chartData, selectedFunctions, isRuntimeContext, logMapping, functionKeys]);
 
@@ -326,7 +282,7 @@ export default function TimelineHighcharts({
               Highcharts.charts.forEach(function (chart) {
                 if (chart !== thisChart) {
                   if (chart && chart.xAxis[0].setExtremes !== null) {
-                    chart.xAxis[0].setExtremes(e.min, e.max, undefined, false, {
+                    chart.xAxis[0].setExtremes(e.min, e.max, true, false, {
                       trigger: "syncExtremes",
                     });
                   }
@@ -378,11 +334,6 @@ export default function TimelineHighcharts({
         backgroundColor: "#1e1e1e",
       }}
     >
-      <SelectFunctionInvocation
-        options={options}
-        selectedFunctions={selectedFunctions}
-        handleSelectChange={handleSelectChange}
-      />
       <ToggleButtonGroup
         size="small"
         orientation="vertical"
@@ -402,6 +353,7 @@ export default function TimelineHighcharts({
         allowChartUpdate={true}
         constructorType={"stockChart"}
         options={chartOptions}
+        updateArgs={[true, false, false]}
         containerProps={{ style: { height: "100%", width: "100%" } }}
       />
     </div>

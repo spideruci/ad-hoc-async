@@ -1,0 +1,28 @@
+.Collapse svg {
+  transition: transform 250ms ease;
+}
+
+.Collapse.collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  text-align: center;
+  line-height: 16px;
+  border-radius: 50%;
+  color: #e0e0e0;
+  font-size: 12px;
+  font-weight: bolder;
+}
+
+.icon-console {
+  background-color: #1e88e5;
+}
+
+.icon-function {
+  background-color: #e64a19;
+}

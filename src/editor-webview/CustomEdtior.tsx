@@ -5,6 +5,7 @@ import type {
   VSCodeState,
   ToVSCodeMessage,
   ToEditorMessage,
+  ConsoleLog,
 } from "../types/message";
 import {
   assignParents,
@@ -36,8 +37,18 @@ const CustomEditor: React.FC = () => {
     }[]
   >([]);
   const [logs, setLogs] = useState<Log[]>([]);
+  const [draggedLogs, addDraggedLog] = useState<ConsoleLog[]>([]);
+  const [tempCacheDraggedLog, updateTempCacheDraggedLog] = useState<ConsoleLog>();
   const { setRange } = useRange();
 
+  const handleMouseOver = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (tempCacheDraggedLog) {
+      addDraggedLog((prevLogs) => [...prevLogs, tempCacheDraggedLog]);
+      updateTempCacheDraggedLog(undefined);
+    }
+  };
+  
   const handleMessage = useCallback(
     (event: MessageEvent<ToEditorMessage>) => {
       if (!editorRef.current) {
@@ -68,6 +79,11 @@ const CustomEditor: React.FC = () => {
       if (event.data.command === "log") {
         const log = event.data.log;
         setLogs((prevLogs) => [...prevLogs, log]);
+      }
+
+      if (event.data.command === "draggedLog") {
+        const log = event.data.log;
+        updateTempCacheDraggedLog(log);
       }
     },
     [monaco]
@@ -140,7 +156,10 @@ const CustomEditor: React.FC = () => {
   }, [logs, setRange]);
 
   return (
-    <div style={{ height: "100vh", width: "100%", position: "relative" }}>
+    <div 
+      style={{ height: "100vh", width: "100%", position: "relative"}}
+      onMouseOver={handleMouseOver}
+    >
       <Editor
         height="100%"
         defaultLanguage={language}
@@ -151,7 +170,7 @@ const CustomEditor: React.FC = () => {
       {editorRef.current &&
         functionBlocks.map((block, index) => (
           <FunctionOverlay
-            logs={logs}
+            logs={logs.filter((log) => draggedLogs.some((draggedLog) => log.currentUUID === draggedLog?.currentUUID))}
             key={index}
             startLine={block.startLine}
             endLine={block.endLine}
