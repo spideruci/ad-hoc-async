@@ -445,6 +445,9 @@ export function SortableTree({
         label="Gather to the top"
         style={{
           color: "#f0f0f0",
+          marginBottom: "10px",
+          marginTop: "10px",
+          marginLeft: "0px",
         }}
       />
       <DndContext
@@ -672,9 +675,11 @@ export function SortableTree({
                       );
                     } else if (gatherToTop) {
                       return <div style={{ height: "0px" }}></div>;
-                    } else {
-                      return splittedIDSet.has(uuid! + log.lineNumber) ||
-                        splittedIDSet.has(uuid!) ? (
+                    } else if (
+                      splittedIDSet.has(uuid! + log.lineNumber) ||
+                      splittedIDSet.has(uuid!)
+                    ) {
+                      return (
                         <LogOutput
                           key={index}
                           log={log}
@@ -692,11 +697,9 @@ export function SortableTree({
                             setGhostModeHoveredId("");
                           }}
                         />
-                      ) : (
-                        <div
-                          style={{ height: !gatherToTop ? "30px" : "0px" }}
-                        ></div>
                       );
+                    } else {
+                      return <div style={{ height: "30px" }}></div>;
                     }
                   })}
               </List>

@@ -133,7 +133,7 @@ export default function LogOutput({
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
-            label={!showBackLabel ? label : "Unsplit and move back"}
+            label={!showBackLabel ? label : "Unsplit and move log(s) back"}
             onClick={() => {
               if (labelClick) {
                 labelClick(log);
@@ -168,7 +168,7 @@ export default function LogOutput({
             style={{
               fontSize: "11px",
             }}
-            label={"Moved splitted logs back"}
+            label={"Move split log(s) back"}
             onClick={() => {
               if (labelClick) {
                 labelClick(log);
