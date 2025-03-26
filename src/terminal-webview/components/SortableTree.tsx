@@ -789,8 +789,7 @@ export function SortableTree({
             activeIndex,
             overIndex
           );
-          const newItems = buildTree(sortedItems);
-
+          const newItems = buildTree<AbstractNode>(sortedItems);
           newLists[destinationIndex].items = newItems;
         }
       } else if (projected) {
