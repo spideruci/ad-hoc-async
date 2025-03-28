@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { AnimateLayoutChanges} from "@dnd-kit/sortable";
+import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { UniqueIdentifier } from "@dnd-kit/core";
@@ -24,6 +24,8 @@ interface Props extends TreeItemProps {
   id: UniqueIdentifier;
   isDraggable: boolean;
   data?: AbstractNode;
+  isVisible?: boolean;
+  onVisibilityClick?(): void;
 }
 
 /**
@@ -32,7 +34,15 @@ interface Props extends TreeItemProps {
  * Uses the `useSortable` dnd-kit hook to create the item and renders
  * the TreeItem with provided data.
  */
-export function SortableTreeItem({ id, isDraggable, depth, data, ...props }: Props) {
+export function SortableTreeItem({
+  id,
+  isDraggable,
+  depth,
+  data,
+  isVisible,
+  onVisibilityClick,
+  ...props
+}: Props) {
   const {
     attributes,
     isDragging,
@@ -63,6 +73,8 @@ export function SortableTreeItem({ id, isDraggable, depth, data, ...props }: Pro
       data={data}
       disableSelection={iOS}
       disableInteraction={isSorting}
+      isVisible={isVisible}
+      onVisibilityClick={onVisibilityClick}
       handleProps={{
         ...attributes,
         ...listeners,
