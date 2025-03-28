@@ -224,6 +224,7 @@ export function SortableTree({
       }),
     [activeId, lists]
   );
+
   const rootItemsPerLists = useMemo(
     () =>
       lists.map((list) =>
@@ -434,6 +435,42 @@ export function SortableTree({
   const [hoveredLabelId, setHoveredLabelId] = useState<string>("");
   const [ghostModeHoveredId, setGhostModeHoveredId] = useState<string>("");
 
+  const [invisibleIds, setInvisibleIds] = useState<Set<String>>(new Set());
+
+  const addInvisibleIds = (collectedIds: Set<String>) => {
+    setInvisibleIds((prevSet) => {
+      const newSet = new Set(prevSet);
+      collectedIds.forEach((id) => {
+        newSet.add(id);
+      });
+      return newSet;
+    });
+  };
+
+  const deleteInvisibleIds = (collectedIds: Set<String>) => {
+    setInvisibleIds((prevSet) => {
+      const newSet = new Set(prevSet);
+      collectedIds.forEach((id) => {
+        newSet.delete(id);
+      });
+      return newSet;
+    });
+  };
+
+  function collectAllChildIds(item: any, collectedIds: Set<String>): void {
+    if (item.data.type === "log") {
+      collectedIds.add("log" + "||" + String(item.data.lineNumber));
+      return;
+    }
+
+    collectedIds.add("function" + "||" + item.data.functionName);
+    item?.children?.forEach((child: any) => {
+      collectAllChildIds(child, collectedIds);
+    });
+
+    return;
+  }
+
   return (
     <>
       <FormControlLabel
@@ -487,44 +524,78 @@ export function SortableTree({
                 {flattenedItems.length === 0 ? (
                   <Placeholder></Placeholder>
                 ) : (
-                  flattenedItems.map(
-                    ({ id, children, collapsed, depth, data }) => {
-                      let key = String(id);
-                      if (!lists[listIndex].isDraggable) {
-                        if (lists[listIndex].type === "function") {
-                          key = key + lists[listIndex].invocationUUID;
-                        } else {
-                          key =
-                            key +
-                            lists[listIndex].invocationUUID +
-                            ":" +
-                            lists[listIndex].lineNumber;
-                        }
+                  flattenedItems.map((thisItem) => {
+                    const { id, children, collapsed, depth, data } = thisItem;
+                    let key = String(id);
+                    if (!lists[listIndex].isDraggable) {
+                      if (lists[listIndex].type === "function") {
+                        key = key + lists[listIndex].invocationUUID;
+                      } else {
+                        key =
+                          key +
+                          lists[listIndex].invocationUUID +
+                          ":" +
+                          lists[listIndex].lineNumber;
                       }
-                      return (
-                        <SortableTreeItem
-                          key={key}
-                          id={key}
-                          value={"" + id}
-                          isDraggable={lists[listIndex].isDraggable}
-                          depth={
-                            id === activeId && projected
-                              ? projected.depth
-                              : depth
-                          }
-                          data={data}
-                          indentationWidth={indentationWidth}
-                          indicator={indicator}
-                          collapsed={collapsed && children.length > 0}
-                          onCollapse={
-                            collapsible && children.length
-                              ? (): void => handleCollapse(id)
-                              : undefined
-                          }
-                        />
-                      );
                     }
-                  )
+                    return (
+                      <SortableTreeItem
+                        key={key}
+                        id={key}
+                        value={"" + id}
+                        isDraggable={lists[listIndex].isDraggable}
+                        depth={
+                          id === activeId && projected ? projected.depth : depth
+                        }
+                        data={data}
+                        indentationWidth={indentationWidth}
+                        indicator={indicator}
+                        collapsed={collapsed && children.length > 0}
+                        onCollapse={
+                          collapsible && children.length
+                            ? (): void => handleCollapse(id)
+                            : undefined
+                        }
+                        isVisible={(() => {
+                          if (data?.type === "log") {
+                            return !invisibleIds.has(
+                              "log" + "||" + data?.lineNumber
+                            );
+                          } else if (data?.type === "function") {
+                            return !invisibleIds.has(
+                              "function" + "||" + data?.functionName
+                            );
+                          }
+                          return true;
+                        })()}
+                        onVisibilityClick={() => {
+                          const set = new Set<String>();
+                          collectAllChildIds(thisItem, set);
+                          if (
+                            data?.type === "log" &&
+                            !invisibleIds.has("log" + "||" + data?.lineNumber)
+                          ) {
+                            addInvisibleIds(set);
+                          } else if (
+                            data?.type === "log" &&
+                            invisibleIds.has("log" + "||" + data?.lineNumber)
+                          ) {
+                            deleteInvisibleIds(set);
+                          } else if (
+                            data?.type === "function" &&
+                            !invisibleIds.has(
+                              "function" + "||" + data?.functionName
+                            )
+                          ) {
+                            addInvisibleIds(set);
+                          } else {
+                            // data?.type === "function" && invisibleIds.has("function" + "||" + data?.functionName)
+                            deleteInvisibleIds(set);
+                          }
+                        }}
+                      />
+                    );
+                  })
                 )}
               </List>
             </SortableContext>
@@ -649,8 +720,15 @@ export function SortableTree({
                       uuidHashList[functionKey!] = [uuid];
                       name = name + " " + sequenceId;
                     }
+
                     const pinColor = labelColorMap.get(name ?? "") ?? "#f8f8f8";
+
                     if (
+                      invisibleIds.has("log" + "||" + log.lineNumber) ||
+                      invisibleIds.has("function" + "||" + log.functionName)
+                    ) {
+                      return <div style={{ height: "0px" }}></div>;
+                    } else if (
                       lists[setIndex].isDraggable &&
                       set.has(getLogKey(log)) &&
                       !splittedIDSet.has(uuid! + log.lineNumber) &&

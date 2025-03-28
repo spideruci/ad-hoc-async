@@ -9,6 +9,8 @@ import { Container } from "./Container";
 import { Content } from "./Content";
 import { Badge } from "./Badge";
 import type { AbstractNode } from "../dynamic-call-tree";
+import OpenEyeIcon from "./OpenEyeIcon"; // Import the EyeIcon component
+import ClosedEyeIcon from "./ClosedEyeIcon";
 
 /**
  * Properties expected by the TreeItem component.
@@ -88,6 +90,16 @@ export interface Props extends Omit<HTMLAttributes<HTMLLIElement>, "id"> {
    * Passed to the outermost element of the tree item.
    */
   wrapperRef?(node: HTMLLIElement): void;
+
+  /**
+   * Related logs visibility control
+   */
+  isVisible?: boolean;
+
+  /**
+   * Callback triggered by the visibility button click.
+   */
+  onVisibilityClick?(): void;
 }
 
 /**
@@ -115,6 +127,7 @@ export const TreeItem = forwardRef<HTMLDivElement, Props>(
       style,
       value,
       wrapperRef,
+      isVisible = false,
       ...props
     },
     ref
@@ -161,7 +174,7 @@ export const TreeItem = forwardRef<HTMLDivElement, Props>(
               {data.type === "function" && (
                 <div className="icon icon-function">f</div>
               )}
-              {`${data.lineNumber ? `line number: ${data.lineNumber} | ` : ""}${
+              {`${data.lineNumber ? `line#: ${data.lineNumber} | ` : ""}${
                 data.name
               }`}
             </>
@@ -170,6 +183,36 @@ export const TreeItem = forwardRef<HTMLDivElement, Props>(
         {clone && childCount && childCount > 1 ? (
           <Badge>{childCount}</Badge>
         ) : null}
+        {isVisible && (
+          <button
+            className="icon icon-visibility"
+            style={{
+              marginLeft: "5px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0",
+            }}
+            onClick={props.onVisibilityClick}
+          >
+            <OpenEyeIcon />
+          </button>
+        )}
+        {!isVisible && (
+          <button
+            className="icon icon-visibility"
+            style={{
+              marginLeft: "5px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0",
+            }}
+            onClick={props.onVisibilityClick}
+          >
+            <ClosedEyeIcon />
+          </button>
+        )}
       </Container>
     </Wrapper>
   )
