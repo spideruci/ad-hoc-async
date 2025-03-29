@@ -348,6 +348,7 @@ export function SortableTree({
     } else {
       setLists([{ isDraggable: true, items: [] }]);
     }
+    setSplittedIdSet(new Set());
   }, [defaultItems]);
 
   const activeFlattenedItems =
