@@ -263,7 +263,7 @@ export function SortableTree({
     log?: ConsoleLog,
     invocationUUID?: string,
     type?: "log" | "function"
-  ) => {
+  ): void => {
     if (!invocationUUID || !type) {
       return;
     }
